@@ -21,7 +21,9 @@ The authoritative project design is
 [`Agent-RL-Credit-Auditor_详细项目设计与旧项目迁移手册.md`](Agent-RL-Credit-Auditor_详细项目设计与旧项目迁移手册.md)
 (v1.0, 2026-08-22). It locks the formal objects, schema, exact worlds, estimator
 plugin contract, independent oracle, audit gates, regression package,
-protocol-first runner, 7-day plan, budget and claims policy.
+protocol-first runner, 7-day plan, budget and claims policy. All deviations and
+semantic-reconstruction decisions are recorded in
+[`docs/decision_log.md`](docs/decision_log.md) (D1-D9).
 
 **Reconstruction mode: `docs_only_semantic`.** The legacy
 `grpo-credit-assignment` code (credit_v2 / credit_transport / minimal_logging)
@@ -29,20 +31,59 @@ and its signed migration bundle are not available on this machine, so per §13.6
 the release reproduces failure *types* (target mismatch, utility failure,
 metric-pass/mechanism-fail) with new frozen protocols, seeds, and numbers.
 Historical numbers (144/202, 24.81×, 0.694, 192/192, ρ=0.735, …) are incident
-background only and never appear as reproduced results. See
-[`docs/decision_log.md`](docs/decision_log.md) (D1).
+background only and never appear as reproduced results.
 
 ## Quick start
 
 ```bash
 uv sync --frozen
+
+# validate the frozen protocols (pre-registration, content-hashed)
 uv run credit-auditor validate-protocol configs/protocols/m0_regression_v1.json
+
+# M0: target audit (12 frozen problems + 5 designed cases)
 uv run credit-auditor run \
   --protocol configs/protocols/m0_regression_v1.json \
   --output artifacts/local/M0 \
   --seed configs/seeds/m0_problems.json
+
+# V001: expected utility failure (calibration accurate, utility FAILS)
+uv run credit-auditor run \
+  --protocol configs/protocols/v001_failure_v1.json \
+  --output artifacts/local/V001 \
+  --seed configs/seeds/v001_problems.json \
+  --seed configs/seeds/v001_calibration.json
+
+# D002: calibration freezes the mapping, test refuses any other selection
+uv run credit-auditor run \
+  --protocol configs/protocols/d002_regression_v1.json \
+  --phase calibration --output artifacts/local/D002_cal \
+  --seed configs/seeds/d002_calibration.json
+uv run credit-auditor run \
+  --protocol configs/protocols/d002_regression_v1.json \
+  --phase test --output artifacts/local/D002_test \
+  --frozen-selection artifacts/local/D002_cal/selection.json \
+  --seed configs/seeds/d002_test.json
+
+# audit + release report
 uv run credit-auditor audit --artifact-dir artifacts/local/M0
+uv run credit-auditor report --artifact-root artifacts/v0.1.0
 ```
+
+The runner never overwrites canonical outputs; re-runs must target new
+directories, and every package carries `run_manifest.json` + `SHA256SUMS`.
+
+## Headline results (docs_only_semantic, all numbers new)
+
+| Experiment | Verdict | What it demonstrates |
+|---|---|---|
+| M0 target audit | dense/HH unbiased; propagated sibling & BPO-like rejected (T003); paired-replay narrow positive passes | the Auditor approves unbiased estimators and rejects wrong targets/propagation |
+| V001 utility failure | calibration accurate (err ~1e-16) but fixed-budget MSE FAILS (median 26.5x vs dense) | "calibration is accurate" does not imply utility; cost accounting matters |
+| D002 dual verdict | global-K efficiency **PASS** (median ratio 0.21, CI [0.18, 0.23]); variable-width mechanism **FAIL** (widths collapse to [2,2,2,2]) | total metrics cannot mask mechanism failure (§13.3) |
+
+Claim ceilings: the D002 pass is a *fixed-width synthetic efficiency* claim on
+a frozen designed world with the paired-replay protocol — it says nothing about
+adaptive methods, LLM agents, or the historical 0.694.
 
 ## Architecture
 

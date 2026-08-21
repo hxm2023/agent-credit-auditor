@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "validate-protocol":
         proto = runner.validate_protocol(args.protocol)
-        print(f"OK {args.protocol} -> protocol_id={proto.protocol_id} v{proto.protocol_version} "
+        print(f"OK {args.protocol} -> protocol_id={proto.protocol_id} {proto.protocol_version} "
               f"mode={proto.reconstruction_mode}")
         return 0
 
