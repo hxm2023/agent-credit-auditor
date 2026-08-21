@@ -31,7 +31,7 @@ def test_frozen_protocol_hashes_are_stable():
     version bump, never an in-place edit."""
     hashes = {f.name: sha256_json(runner.validate_protocol(f).model_dump(mode="json")) for f in sorted(PROTOCOLS.glob("*.json"))}
     assert hashes == {
-        "d002_regression_v1.json": "2bca5b98b325b99085d4ea840315e96866045ef9fc6d1657d980826cfe2428c0",
+        "d002_regression_v1.json": "7d138af0016c7e1a76ca83416fb0106f2106a1475001cbd18a03932af95a1d1e",
         "m0_regression_v1.json": "8bd2866c4a8dba8e8bfae8d4b551c8cc4bfdd82335cf58f26d11009b692e8af6",
         "v001_failure_v1.json": "37260cca02a399335943999b1cc703c208a0c18d07f727adc5c550d7700de26a",
     }

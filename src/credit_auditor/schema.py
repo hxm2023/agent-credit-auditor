@@ -168,6 +168,7 @@ class _RegisteredCalculator:
         self._registry: dict[str, Any] = {}
         self.register("dense_horizon_v1", _dense_horizon_v1)
         self.register("d002_branching_v1", _d002_branching_v1)
+        self.register("paired_replay_all_v1", _paired_replay_all_v1)
 
     def register(self, calculator_id: str, fn: Any) -> None:
         self._registry[calculator_id] = fn
@@ -216,6 +217,31 @@ def _d002_branching_v1(**params: Any) -> CostBreakdown:
             CostTerm(term_id="restores", quantity=f"{width-1}/1", unit_cost=_fstr(c_restore), subtotal=_fstr(restores)),
         ],
         total=_fstr(total),
+    )
+
+
+def _paired_replay_all_v1(**params: Any) -> CostBreakdown:
+    """Semantic D002 cost (decision log D9): the cycle samples the full
+    trajectory (h) plus, for each branched decision t >= d, one sibling
+    continuation of length (h-t) and one restore. Width-free (the paired
+    contrast is deterministic in the focal world)."""
+    h = params.get("horizon")
+    d = params.get("depth")
+    if not (isinstance(h, int) and isinstance(d, int)):
+        raise ValueError("paired_replay_all_v1 requires integer horizon/depth")
+    if not (h > 0 and 0 <= d < h):
+        raise ValueError("paired_replay_all_v1 domain: H>0, 0<=d<H")
+    roll = Fraction(h, 1)
+    cont = sum((Fraction(h - t, 1) for t in range(d, h)), Fraction(0))
+    rest = Fraction(h - d, 1)
+    return CostBreakdown(
+        primary_unit="environment_transition",
+        terms=[
+            CostTerm(term_id="full_rollout", quantity=f"{h}/1", unit_cost="1/1", subtotal=_fstr(roll)),
+            CostTerm(term_id="sibling_continuations", quantity=f"{cont.numerator}/{cont.denominator}", unit_cost="1/1", subtotal=_fstr(cont)),
+            CostTerm(term_id="restores", quantity=f"{rest.numerator}/{rest.denominator}", unit_cost="1/1", subtotal=_fstr(rest)),
+        ],
+        total=_fstr(roll + cont + rest),
     )
 
 

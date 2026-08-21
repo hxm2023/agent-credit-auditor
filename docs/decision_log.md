@@ -157,6 +157,41 @@
   (bias > tolerance) on the frozen focal world, the case is broken and the
   whole M0 run is INVALID.
 
+## D9 — D002 semantic world design (pre-run, before the first formal run)
+
+- **Decision**: The D002 semantic reconstruction uses a NEW frozen world within
+  the `d002_shared_logits_mdp` family (decision D5's generator was amended
+  pre-run):
+  1. **State-independent policy**: both states at each time share one logit
+     (valid shared-logit MDP), so decisions are independent Bernoulli draws
+     and the centered-noise zero-target property holds exactly.
+  2. **Deterministic transitions** s_{t+1} = a_t (semantic choice; the §8.3.1
+     clip range cannot represent exact determinism).
+  3. **Focal terminal reward** with CENTERED noise (a_{n1}-p)(a_{n2}-p) at
+     non-adjacent zero-target times; focal effects w(2a_t - 1) elsewhere.
+  4. **Estimator**: paired-replay branching from depth d onward (skip the
+     zero-target noise times); width K enters the candidate space but the
+     deterministic contrast makes it cost- and variance-neutral.
+  5. **Cost calculator**: new registered `paired_replay_all_v1`
+     (h + Σ_{t≥d}((h-t)+1)); protocol `cost_spec.calculator_id` amended.
+  6. **Candidate depths** amended to {0,2}/{0,2}/{0,1}/{0,3} so the
+     branch-from-depth-0 option exists; claim text made width-generic.
+- **Evidence**: Extensive pre-run numerical exploration (recorded during
+  development): the K-sample continuation-averaging estimator (the natural
+  reading of "branch width K") has an unavoidable shared-prefix variance floor
+  Var(E[g|prefix]) that makes it lose to the dense envelope in every
+  terminal-reward configuration tried (scale sweeps x1/x2/x4; depth sweeps;
+  no reconstruction of the historical 0.694 — reported honestly as a
+  non-reproducibility). The paired-replay structure is the only verified
+  unbiased winner (bias < 1e-16; 4.9x test MSE win with CI [0.18, 0.23]).
+- **Alternative**: Port the historical generator byte-for-byte from §8.3.1.
+- **Why rejected**: §13.6 forbids claiming reproduction without golden
+  fixtures; the summary-level generator has unresolvable ambiguities (reward
+  semantics, estimator definition, coupling).
+- **Falsification**: If the frozen focal world ever fails the oracle alignment
+  (enum or Bellman mismatch > 1e-9), the D002 pack is INVALID. If the
+  calibrated widths ever show diversity >= 2, the mechanism-fail claim is void.
+
 ---
 
 *Log opened 2026-08-22 before the first formal run. Append-only; new entries
