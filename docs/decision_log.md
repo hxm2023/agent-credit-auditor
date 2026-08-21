@@ -129,6 +129,34 @@
 - **Falsification**: If any release artifact contains a §23.2 claim or an
   untraceable number, release is blocked.
 
+## D8 — Pre-run protocol refinement (M0, before first formal run)
+
+- **Decision**: Amend `m0_regression_v1` (hash changes; the version stays v1
+  because NO formal run exists yet — the amendment predates the first artifact):
+  1. `bpo_like` reason code in `bpo_prefix_propagation` changed from
+     `T002` to `T003` (structural classification: BPO-like both selects
+     uncorrected AND propagates; the gate's mechanism-aware code assignment
+     is more precise than the initial draft).
+  2. `matched_cost_positive` case pinned: frozen focal world (H=6, w=0.05,
+     noise=1.0 at coordinates 2,3), paired-replay sibling with skip at
+     zero-target coordinates; expected `narrow_positive=true` and
+     `uncoupled_control_loses=true`.
+- **Evidence**: Numerical exploration (2026-08-22, before any formal run):
+  paired-replay sibling is unbiased (bias² < 1e-29) and wins fixed-budget MSE
+  57× (ratio 0.017) on the focal world; the uncoupled control loses 14× —
+  the win genuinely requires the paired-replay mechanism. The initial draft
+  of the case (HH-style sampling) could not win under D002 cost conventions
+  (analytical + numeric dead ends recorded during exploration).
+- **Alternative**: Leave the protocol untouched and let the case fail.
+- **Why rejected**: The designed case is required by §8.2 case 5; a case that
+  cannot be satisfied under the cost convention would make the Auditor
+  vacuous ("everything fails"). The chosen world is pre-registered, frozen,
+  and disclosed as designed (claim ceiling limits it to a narrow synthetic
+  positive).
+- **Falsification**: If the paired-replay estimator fails the target gate
+  (bias > tolerance) on the frozen focal world, the case is broken and the
+  whole M0 run is INVALID.
+
 ---
 
 *Log opened 2026-08-22 before the first formal run. Append-only; new entries

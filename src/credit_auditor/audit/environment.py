@@ -28,18 +28,18 @@ def noop_alternative_detection(world: BernoulliSequenceMDP) -> list[bool]:
 
 
 def group_variance_zero(world: BernoulliSequenceMDP, group: tuple[int, ...]) -> bool:
-    """E003: within a decision group, the estimator values must not be
-    constant (e.g., an action with no reward effect makes its local
-    contrast estimator degenerate)."""
+    """E003: within a decision group, the local effects must not be constant
+    zero across ALL reachable prefixes. A single-prefix group (t=0) defers to
+    the E001 no-op check, since a lone near-zero effect can be legitimate."""
     q = world.q_values()
-    vals = []
+    vals: list[float] = []
     H = world.horizon
     for t in group:
         for bits in range(1 << t):
             h = tuple((bits >> (t - 1 - tt)) & 1 for tt in range(t))
             vals.append(q[h + (1,)] - q[h + (0,)])
-    if not vals:
-        return True
+    if len(vals) < 2:
+        return False
     return max(vals) - min(vals) < 1e-30
 
 

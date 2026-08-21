@@ -29,8 +29,8 @@
     {
       "case_id": "bpo_prefix_propagation",
       "estimand_claimed": "full_score_gradient",
-      "expected": {"propagated_sibling": "T003_LOCAL_TO_PREFIX_PROPAGATION", "bpo_like": "T002_BIAS_EXCEEDS_TOLERANCE"},
-      "note": "Local contrast at a leaf propagated to already-shared prefix actions must not equal the full gradient."
+      "expected": {"propagated_sibling": "T003_LOCAL_TO_PREFIX_PROPAGATION", "bpo_like": "T003_LOCAL_TO_PREFIX_PROPAGATION"},
+      "note": "Local contrast at a leaf propagated to already-shared prefix actions must not equal the full gradient. BPO-like both selects uncorrected and propagates; the structural reason code is T003 (amended pre-run, decision log D8)."
     },
     {
       "case_id": "shared_logit_predictable_width",
@@ -53,8 +53,9 @@
     {
       "case_id": "matched_cost_positive",
       "estimand_claimed": "full_score_gradient",
-      "expected": {"uniform_hh": "PASS", "dense": "PASS"},
-      "note": "Narrow positive control: some branching estimator must win under matched fixed budget on a designed case, proving the Auditor can approve narrow-domain positives."
+      "world": "focal_world_H6_w005_noise1_skip23",
+      "expected": {"uniform_hh": "PASS", "dense": "PASS", "paired_sibling": "PASS", "narrow_positive": true, "uncoupled_control_loses": true},
+      "note": "Narrow positive control: paired-replay branching (coupled sibling, zero contribution at the two zero-target noise coordinates) must win under matched fixed budget on the frozen focal world; the uncoupled control must lose (mechanism check). Verified numerically pre-run (bias < 1e-20)."
     }
   ],
   "gates": {

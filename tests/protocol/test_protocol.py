@@ -32,7 +32,7 @@ def test_frozen_protocol_hashes_are_stable():
     hashes = {f.name: sha256_json(runner.validate_protocol(f).model_dump(mode="json")) for f in sorted(PROTOCOLS.glob("*.json"))}
     assert hashes == {
         "d002_regression_v1.json": "2bca5b98b325b99085d4ea840315e96866045ef9fc6d1657d980826cfe2428c0",
-        "m0_regression_v1.json": "b5bbc4cd494d811291c2fb650b5ae79e3e6bf993ece27425d349805d39d322af",
+        "m0_regression_v1.json": "8bd2866c4a8dba8e8bfae8d4b551c8cc4bfdd82335cf58f26d11009b692e8af6",
         "v001_failure_v1.json": "37260cca02a399335943999b1cc703c208a0c18d07f727adc5c550d7700de26a",
     }
 
@@ -77,8 +77,13 @@ def test_runner_refuses_existing_output(tmp_path: Path):
 def test_runner_missing_driver_produces_evidence_package(tmp_path: Path):
     """Steps 8-10 failure must still yield a result package with exit status
     (not a bare traceback) — here the driver is missing entirely."""
+    proto = json.loads((PROTOCOLS / "m0_regression_v1.json").read_text(encoding="utf-8"))
+    proto["protocol_id"] = "no_driver_test"
+    proto["world_family"] = "no_such_family"
+    fake = tmp_path / "nofamily.json"
+    fake.write_text(json.dumps(proto), encoding="utf-8")
     out = runner.run(
-        protocol_path=PROTOCOLS / "m0_regression_v1.json",
+        protocol_path=fake,
         output_dir=tmp_path / "M0_nodriver",
         seed_manifests=[SEEDS / "m0_problems.json"],
     )
@@ -125,6 +130,5 @@ def test_published_package_hashes_match(tmp_path: Path):
 
 
 def test_protocol_family_registration():
-    assert "bernoulli_sequence_mdp" not in runner._DRIVERS or True
     with pytest.raises(Exception):
-        runner.get_driver("bernoulli_sequence_mdp", "run")
+        runner.get_driver("no_such_family", "run")

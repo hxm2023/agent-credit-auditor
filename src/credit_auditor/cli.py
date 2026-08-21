@@ -6,6 +6,9 @@ import sys
 from pathlib import Path
 
 from credit_auditor import runner
+from credit_auditor.experiments import m0 as _m0
+
+_m0.register()
 
 
 def main(argv: list[str] | None = None) -> int:
