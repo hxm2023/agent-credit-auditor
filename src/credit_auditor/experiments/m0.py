@@ -367,4 +367,4 @@ def _render_report(results: dict, decision: AuditDecision) -> str:
 
 
 def register() -> None:
-    runner.register_driver("bernoulli_sequence_mdp", "run", run_m0)
+    runner.register_driver("m0_regression_v1", "run", run_m0)

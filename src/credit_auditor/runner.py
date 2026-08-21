@@ -78,16 +78,16 @@ class ExperimentDriver(Protocol):
 _DRIVERS: dict[str, dict[str, Callable[[RunContext], RunResult]]] = {}
 
 
-def register_driver(protocol_family: str, phase: str, fn: Callable[[RunContext], RunResult]) -> None:
-    _DRIVERS.setdefault(protocol_family, {})[phase] = fn
+def register_driver(protocol_id: str, phase: str, fn: Callable[[RunContext], RunResult]) -> None:
+    _DRIVERS.setdefault(protocol_id, {})[phase] = fn
 
 
-def get_driver(protocol_family: str, phase: str) -> Callable[[RunContext], RunResult]:
+def get_driver(protocol_id: str, phase: str) -> Callable[[RunContext], RunResult]:
     try:
-        return _DRIVERS[protocol_family][phase]
+        return _DRIVERS[protocol_id][phase]
     except KeyError:
         raise DriverError(
-            f"no driver for protocol_family={protocol_family!r} phase={phase!r} "
+            f"no driver for protocol_id={protocol_id!r} phase={phase!r} "
             f"(registered: {sorted(_DRIVERS)})"
         )
 
@@ -170,7 +170,7 @@ def run(
     check_split_disjoint(cal, test)
 
     # 6-13. driver (generates worlds, estimators, oracles, gates)
-    family = proto.world_family
+    family = proto.protocol_id
     ctx = RunContext(
         protocol=proto,
         protocol_path=protocol_path,

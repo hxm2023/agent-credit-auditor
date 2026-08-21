@@ -7,8 +7,10 @@ from pathlib import Path
 
 from credit_auditor import runner
 from credit_auditor.experiments import m0 as _m0
+from credit_auditor.experiments import v001 as _v001
 
 _m0.register()
+_v001.register()
 
 
 def main(argv: list[str] | None = None) -> int:
