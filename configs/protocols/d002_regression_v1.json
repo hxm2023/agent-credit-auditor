@@ -1,0 +1,93 @@
+{
+  "protocol_id": "d002_regression_v1",
+  "protocol_version": "v1",
+  "description": "D002-style shared-logit calibration/test regression, docs_only_semantic mode. Semantic reconstruction per design 8.3: 3 shared logits, binary states/actions, 4 buckets, mapping space 7^4, cycle cost c(h,d,K)=d+K(h-d)+(K-1)r with r=1, budget grid {512,1024,2048,4096}. NEW frozen seeds (calibration 12, test 48). Demonstrates metric-pass / mechanism-fail dual verdict. No historical parity claims (0.694, 192/192 are background).",
+  "reconstruction_mode": "docs_only_semantic",
+  "frozen_at": "2026-08-22",
+  "world_family": "d002_shared_logits_mdp",
+  "policy_parameterization": "shared_logits",
+  "reward_semantics": "terminal",
+  "generator_spec": {
+    "seed_derivation": "sha256(ACA-SEM-D002::<phase>::<i>[:<salt>]) first 8 bytes mod 2147483647",
+    "calibration_problem_count": 12,
+    "test_problem_count": 48,
+    "buckets": [
+      {"bucket_id": "late_reusable", "horizon": 6, "depth_candidates": [2, 4]},
+      {"bucket_id": "early_sensitive", "horizon": 6, "depth_candidates": [2, 4]},
+      {"bucket_id": "short_mixed", "horizon": 3, "depth_candidates": [1, 2]},
+      {"bucket_id": "medium_mixed", "horizon": 5, "depth_candidates": [1, 3]}
+    ],
+    "shared_logit_count": 3,
+    "transition_prob_range": [0.05, 0.95],
+    "terminal_table": "bernoulli_with_nonconstant_guard"
+  },
+  "mapping_space": {
+    "candidate_slots_per_bucket": 7,
+    "candidate_order": "dense_first_then_depth_asc_then_width_2_4_8",
+    "mapping_space_size": 2401,
+    "widths": [2, 4, 8],
+    "dense_width": 1
+  },
+  "cost_spec": {
+    "primary_unit": "environment_transition",
+    "arithmetic": "rational",
+    "calculator_id": "d002_branching_v1",
+    "parameters": {"prefix_transition_cost": "1/1", "suffix_transition_cost": "1/1", "restore_overhead_per_extra_suffix": "1/1"},
+    "rounding": "floor_complete_cycles",
+    "infeasible_if_budget_below_cycle_cost": true,
+    "leftover_policy": "reserved_dummy_no_gradient_work"
+  },
+  "budget_grid": [512, 1024, 2048, 4096],
+  "primary_budget": 4096,
+  "calibration_spec": {
+    "objective": "mean(log(exact_trace_mse + 1e-18)) over calibration problems",
+    "tie_break_order": ["objective", "cycle_cost", "candidate_index_tuple"],
+    "output": "frozen_mapping",
+    "test_phase_refuses_unfrozen_selection": true
+  },
+  "baseline_spec": {
+    "envelope": "per_problem_min(dense_optimal_constant, dense_exact_root_rloo)",
+    "entrypoint": "frozen_strong_envelope",
+    "unfaithful_reason_code": "C003_BASELINE_ENTRYPOINT_UNFAITHFUL"
+  },
+  "oracle_spec": {
+    "kind": "bellman_gradient",
+    "independent_process": true,
+    "import_isolation": true,
+    "mismatch_tolerance_rel": 1e-9,
+    "mismatch_tolerance_abs": 1e-12
+  },
+  "bootstrap_spec": {
+    "replicates": 10000,
+    "unit": "192-equivalent problem-level paired ratios (48 test problems here)",
+    "seed": "ACA-SEM-D002-BOOT-20260822",
+    "percentiles": [2.5, 97.5],
+    "per_budget_seed_salt": "ACA-SEM-D002-BOOT::<budget>"
+  },
+  "gates": {
+    "integrity": {"required": true},
+    "independent_oracle": {"required": true},
+    "matched_cost": {"required": true, "reason_codes": ["C001_UNMATCHED_TRANSITION_BUDGET", "C002_CALIBRATION_COST_OMITTED"]},
+    "heldout_split": {"required": true, "reason_codes": ["D001_SPLIT_OVERLAP", "D002_TEST_TIME_RESElection", "D003_OUTPUT_OVERWRITE"]},
+    "utility": {"required": true, "threshold_relative_improvement": 0.2, "bootstrap_lower_bound_positive": true},
+    "mechanism": {"required": true, "reason_codes": ["MECH001_ADAPTIVE_MAPPING_COLLAPSED_TO_GLOBAL", "MECH002_ROOT_VS_LEAF_NOT_MATERIAL"]},
+    "environment": {"required": true, "reason_codes": ["E001_ALTERNATIVE_NOOP", "E002_ORACLE_MISMATCH", "E003_GROUP_VARIANCE_ZERO"]}
+  },
+  "claims": [
+    {"claim_id": "global_k8_efficiency", "status_expected": "PASS", "claim_text": "global K=8 improves finite-MDP fixed-budget MSE under protocol d002_regression_v1", "required_gates": ["integrity", "target_identity", "independent_oracle", "matched_cost", "heldout_split", "utility"], "ceiling": "fixed-width synthetic efficiency only; no adaptive-method implication"},
+    {"claim_id": "variable_width_adaptivity", "status_expected": "FAIL", "claim_text": "variable-width adaptive mapping beats global control materially", "required_gates": ["integrity", "heldout_split", "mechanism"], "reason_codes_expected": ["MECH001_ADAPTIVE_MAPPING_COLLAPSED_TO_GLOBAL"]}
+  ],
+  "headline_decision_expected": {
+    "proposed_new_method_claim": "FAIL",
+    "retained_narrow_claim": "global_k8_efficiency"
+  },
+  "fault_injection_expected": {
+    "A7": "D001_SPLIT_OVERLAP",
+    "A8": "D002_TEST_TIME_RESElection",
+    "A9": "MECH001_ADAPTIVE_MAPPING_COLLAPSED_TO_GLOBAL",
+    "A11": "E001_ALTERNATIVE_NOOP",
+    "A12": "P001_EVIDENCE_INCOMPLETE",
+    "A13": "D003_OUTPUT_OVERWRITE",
+    "A14": "N001_NEAR_ZERO_SIGN"
+  }
+}

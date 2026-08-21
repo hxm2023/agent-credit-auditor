@@ -1,0 +1,59 @@
+{
+  "protocol_id": "v001_failure_v1",
+  "protocol_version": "v1",
+  "description": "V001-style expected utility failure, docs_only_semantic mode. Frozen case where residual estimation is well-calibrated but fixed-budget MSE utility fails (residual noise amplification + branch continuation cost). Expected stable FAIL. New numbers only; historical 24.81x is background.",
+  "reconstruction_mode": "docs_only_semantic",
+  "frozen_at": "2026-08-22",
+  "world_family": "bernoulli_sequence_mdp",
+  "policy_parameterization": "independent_logits",
+  "reward_semantics": "terminal_noise",
+  "horizon_set": [4, 8, 16],
+  "reward_snr_set": [0.25, 1.0, 4.0],
+  "problem_seed_prefix": "ACA-SEM-V001",
+  "problem_seed_count": 12,
+  "calibration_problem_count": 6,
+  "primary_estimand": "full_score_gradient",
+  "calibration_spec": {
+    "subset_seed_prefix": "ACA-SEM-V001-CAL",
+    "draws_per_calibration_problem": 2048,
+    "calibration_seeds": [1001, 2003, 3001],
+    "output": "frozen_q_and_residual_params"
+  },
+  "branching_spec": {
+    "branch_width": 2,
+    "branch_budget_fractions": ["1/8", "1/4", "1/2"],
+    "primary_budget_fraction": "1/4",
+    "uniform_floor_epsilon": 0.1,
+    "total_transition_budget_multiplier": 512
+  },
+  "cost_spec": {
+    "primary_unit": "environment_transition",
+    "arithmetic": "rational",
+    "calculator_id": "d002_branching_v1",
+    "parameters": {"prefix_transition_cost": "1/1", "suffix_transition_cost": "1/1", "restore_overhead_per_extra_suffix": "1/1"},
+    "rounding": "floor_complete_cycles",
+    "infeasible_if_budget_below_cycle_cost": true,
+    "leftover_policy": "reserved_dummy_no_gradient_work"
+  },
+  "estimators": ["dense", "uniform_hh", "pc_rsg"],
+  "utility_gate": {
+    "required": true,
+    "definition": "fixed_budget_mse_ratio_median_improvement",
+    "threshold_relative_improvement": 0.2,
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": "ACA-SEM-V001-BOOT",
+    "unit": "problem-level paired ratios",
+    "comparators": ["dense", "uniform_hh"],
+    "reason_codes": ["U001_PRIMARY_THRESHOLD_MET", "U002_UTILITY_THRESHOLD_FAILED", "C001_UNMATCHED_TRANSITION_BUDGET", "C002_CALIBRATION_COST_OMITTED"]
+  },
+  "expected_outcome": {
+    "pc_rsg": "FAIL",
+    "reason_codes": ["U002_UTILITY_THRESHOLD_FAILED"],
+    "calibration_accuracy": "pass",
+    "note": "q and residual moments must be accurately estimated (calibration pass) while matched-budget utility fails. This is the pre-registered semantic reproduction of the historical V001 failure TYPE, not a claim of historical numbers."
+  },
+  "fault_injection_expected": {
+    "A5": "C001_UNMATCHED_TRANSITION_BUDGET",
+    "A6": "C003_BASELINE_ENTRYPOINT_UNFAITHFUL"
+  }
+}

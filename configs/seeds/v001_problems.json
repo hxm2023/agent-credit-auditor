@@ -1,0 +1,78 @@
+{
+  "manifest": "ACA-SEM seed manifest",
+  "derivation": "sha256(key::i) first 8 bytes big-endian mod 2147483647",
+  "rows": [
+    {
+      "problem_id": "v001_p00",
+      "seed": 509351516,
+      "horizon": 4,
+      "snr": 0.25
+    },
+    {
+      "problem_id": "v001_p01",
+      "seed": 493643593,
+      "horizon": 8,
+      "snr": 0.25
+    },
+    {
+      "problem_id": "v001_p02",
+      "seed": 1239792552,
+      "horizon": 16,
+      "snr": 0.25
+    },
+    {
+      "problem_id": "v001_p03",
+      "seed": 225578735,
+      "horizon": 4,
+      "snr": 0.25
+    },
+    {
+      "problem_id": "v001_p04",
+      "seed": 1107327878,
+      "horizon": 8,
+      "snr": 1.0
+    },
+    {
+      "problem_id": "v001_p05",
+      "seed": 1096453840,
+      "horizon": 16,
+      "snr": 1.0
+    },
+    {
+      "problem_id": "v001_p06",
+      "seed": 1215350994,
+      "horizon": 4,
+      "snr": 1.0
+    },
+    {
+      "problem_id": "v001_p07",
+      "seed": 1441591703,
+      "horizon": 8,
+      "snr": 1.0
+    },
+    {
+      "problem_id": "v001_p08",
+      "seed": 1698400327,
+      "horizon": 16,
+      "snr": 4.0
+    },
+    {
+      "problem_id": "v001_p09",
+      "seed": 584517523,
+      "horizon": 4,
+      "snr": 4.0
+    },
+    {
+      "problem_id": "v001_p10",
+      "seed": 1260454261,
+      "horizon": 8,
+      "snr": 4.0
+    },
+    {
+      "problem_id": "v001_p11",
+      "seed": 907083183,
+      "horizon": 16,
+      "snr": 4.0
+    }
+  ]
+}

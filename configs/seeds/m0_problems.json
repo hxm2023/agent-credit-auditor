@@ -1,0 +1,66 @@
+{
+  "manifest": "ACA-SEM seed manifest",
+  "derivation": "sha256(key::i) first 8 bytes big-endian mod 2147483647",
+  "rows": [
+    {
+      "problem_id": "m0_p00",
+      "seed": 903589144,
+      "horizon": 2
+    },
+    {
+      "problem_id": "m0_p01",
+      "seed": 368414368,
+      "horizon": 4
+    },
+    {
+      "problem_id": "m0_p02",
+      "seed": 1764530877,
+      "horizon": 6
+    },
+    {
+      "problem_id": "m0_p03",
+      "seed": 611423628,
+      "horizon": 2
+    },
+    {
+      "problem_id": "m0_p04",
+      "seed": 978374582,
+      "horizon": 4
+    },
+    {
+      "problem_id": "m0_p05",
+      "seed": 2087165237,
+      "horizon": 6
+    },
+    {
+      "problem_id": "m0_p06",
+      "seed": 2129506405,
+      "horizon": 2
+    },
+    {
+      "problem_id": "m0_p07",
+      "seed": 255298649,
+      "horizon": 4
+    },
+    {
+      "problem_id": "m0_p08",
+      "seed": 577881815,
+      "horizon": 6
+    },
+    {
+      "problem_id": "m0_p09",
+      "seed": 1219441930,
+      "horizon": 2
+    },
+    {
+      "problem_id": "m0_p10",
+      "seed": 1808468544,
+      "horizon": 4
+    },
+    {
+      "problem_id": "m0_p11",
+      "seed": 123513166,
+      "horizon": 6
+    }
+  ]
+}

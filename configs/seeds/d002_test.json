@@ -1,0 +1,198 @@
+{
+  "manifest": "ACA-SEM seed manifest",
+  "derivation": "sha256(key::i) first 8 bytes big-endian mod 2147483647",
+  "rows": [
+    {
+      "problem_id": "d002_test00",
+      "seed": 288303381
+    },
+    {
+      "problem_id": "d002_test01",
+      "seed": 1368034612
+    },
+    {
+      "problem_id": "d002_test02",
+      "seed": 1901337990
+    },
+    {
+      "problem_id": "d002_test03",
+      "seed": 818242497
+    },
+    {
+      "problem_id": "d002_test04",
+      "seed": 1635879765
+    },
+    {
+      "problem_id": "d002_test05",
+      "seed": 657156056
+    },
+    {
+      "problem_id": "d002_test06",
+      "seed": 1212642584
+    },
+    {
+      "problem_id": "d002_test07",
+      "seed": 927788755
+    },
+    {
+      "problem_id": "d002_test08",
+      "seed": 817407417
+    },
+    {
+      "problem_id": "d002_test09",
+      "seed": 375463615
+    },
+    {
+      "problem_id": "d002_test10",
+      "seed": 1129010166
+    },
+    {
+      "problem_id": "d002_test11",
+      "seed": 568422726
+    },
+    {
+      "problem_id": "d002_test12",
+      "seed": 659822920
+    },
+    {
+      "problem_id": "d002_test13",
+      "seed": 893308153
+    },
+    {
+      "problem_id": "d002_test14",
+      "seed": 1306384707
+    },
+    {
+      "problem_id": "d002_test15",
+      "seed": 376662470
+    },
+    {
+      "problem_id": "d002_test16",
+      "seed": 579716638
+    },
+    {
+      "problem_id": "d002_test17",
+      "seed": 106464381
+    },
+    {
+      "problem_id": "d002_test18",
+      "seed": 985395170
+    },
+    {
+      "problem_id": "d002_test19",
+      "seed": 1260016928
+    },
+    {
+      "problem_id": "d002_test20",
+      "seed": 89184290
+    },
+    {
+      "problem_id": "d002_test21",
+      "seed": 501525507
+    },
+    {
+      "problem_id": "d002_test22",
+      "seed": 470634853
+    },
+    {
+      "problem_id": "d002_test23",
+      "seed": 1314479611
+    },
+    {
+      "problem_id": "d002_test24",
+      "seed": 1234359122
+    },
+    {
+      "problem_id": "d002_test25",
+      "seed": 103131374
+    },
+    {
+      "problem_id": "d002_test26",
+      "seed": 882061719
+    },
+    {
+      "problem_id": "d002_test27",
+      "seed": 1873529899
+    },
+    {
+      "problem_id": "d002_test28",
+      "seed": 1622552074
+    },
+    {
+      "problem_id": "d002_test29",
+      "seed": 1123757077
+    },
+    {
+      "problem_id": "d002_test30",
+      "seed": 870046692
+    },
+    {
+      "problem_id": "d002_test31",
+      "seed": 537364015
+    },
+    {
+      "problem_id": "d002_test32",
+      "seed": 1157590168
+    },
+    {
+      "problem_id": "d002_test33",
+      "seed": 455495869
+    },
+    {
+      "problem_id": "d002_test34",
+      "seed": 637050562
+    },
+    {
+      "problem_id": "d002_test35",
+      "seed": 609306147
+    },
+    {
+      "problem_id": "d002_test36",
+      "seed": 2025364367
+    },
+    {
+      "problem_id": "d002_test37",
+      "seed": 2102968556
+    },
+    {
+      "problem_id": "d002_test38",
+      "seed": 1016292515
+    },
+    {
+      "problem_id": "d002_test39",
+      "seed": 615180746
+    },
+    {
+      "problem_id": "d002_test40",
+      "seed": 1094971194
+    },
+    {
+      "problem_id": "d002_test41",
+      "seed": 1945502990
+    },
+    {
+      "problem_id": "d002_test42",
+      "seed": 1494854619
+    },
+    {
+      "problem_id": "d002_test43",
+      "seed": 462836496
+    },
+    {
+      "problem_id": "d002_test44",
+      "seed": 2020702604
+    },
+    {
+      "problem_id": "d002_test45",
+      "seed": 708795999
+    },
+    {
+      "problem_id": "d002_test46",
+      "seed": 234415499
+    },
+    {
+      "problem_id": "d002_test47",
+      "seed": 545391095
+    }
+  ]
+}

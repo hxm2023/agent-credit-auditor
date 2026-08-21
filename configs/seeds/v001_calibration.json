@@ -1,0 +1,30 @@
+{
+  "manifest": "ACA-SEM seed manifest",
+  "derivation": "sha256(key::i) first 8 bytes big-endian mod 2147483647",
+  "rows": [
+    {
+      "problem_id": "v001_cal00",
+      "seed": 2066890346
+    },
+    {
+      "problem_id": "v001_cal01",
+      "seed": 1473045376
+    },
+    {
+      "problem_id": "v001_cal02",
+      "seed": 461113722
+    },
+    {
+      "problem_id": "v001_cal03",
+      "seed": 1189302453
+    },
+    {
+      "problem_id": "v001_cal04",
+      "seed": 1332440124
+    },
+    {
+      "problem_id": "v001_cal05",
+      "seed": 1551500332
+    }
+  ]
+}
