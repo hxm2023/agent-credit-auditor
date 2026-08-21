@@ -79,11 +79,14 @@ directories, and every package carries `run_manifest.json` + `SHA256SUMS`.
 |---|---|---|
 | M0 target audit | dense/HH unbiased; propagated sibling & BPO-like rejected (T003); paired-replay narrow positive passes | the Auditor approves unbiased estimators and rejects wrong targets/propagation |
 | V001 utility failure | calibration accurate (err ~1e-16) but fixed-budget MSE FAILS (median 26.5x vs dense) | "calibration is accurate" does not imply utility; cost accounting matters |
-| D002 dual verdict | global-K efficiency **PASS** (median ratio 0.21, CI [0.18, 0.23]); variable-width mechanism **FAIL** (widths collapse to [2,2,2,2]) | total metrics cannot mask mechanism failure (§13.3) |
+| D002 dual verdict | calibrated mapping **PASS** vs the dense envelope (median ratio 0.21, CI [0.18, 0.23]); adaptive variable-width mechanism **FAIL** (calibrated widths collapse to [2,2,2,2]) | a metric pass does not license an adaptive-mechanism claim (§13.3) |
 
-Claim ceilings: the D002 pass is a *fixed-width synthetic efficiency* claim on
-a frozen designed world with the paired-replay protocol — it says nothing about
-adaptive methods, LLM agents, or the historical 0.694.
+Claim ceilings: the D002 pass is a *fixed mapping efficiency* claim on a frozen
+designed world with the paired-replay protocol — the width itself is not the
+mechanism (the pre-registered raw-MSE calibration objective structurally
+prefers the largest width, so the collapse to [2,2,2,2] is expected and
+documented in the run's REPORT.md). It says nothing about adaptive methods,
+LLM agents, or the historical 0.694.
 
 ## Architecture
 

@@ -225,13 +225,14 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         ClaimDecision(
             claim_id="global_k8_efficiency",
             claim_text=(
-                f"fixed global-K={selected_widths[0]} branching improves finite-MDP fixed-budget MSE "
-                f"under protocol d002_regression_v1 (semantic)"
+                f"the calibrated fixed mapping (declared widths all equal to {selected_widths[0]}) "
+                f"improves finite-MDP fixed-budget MSE under protocol d002_regression_v1 (semantic). "
+                f"The width itself is not asserted to be the mechanism (see ceiling)."
             ),
             status=ClaimStatus.PASS if utility_pass else ClaimStatus.FAIL,
             required_gates=["integrity", "independent_oracle", "matched_cost", "heldout_split", "utility"],
             reason_codes=[] if utility_pass else [ReasonCode.U002_UTILITY_THRESHOLD_FAILED],
-            claim_ceiling={"allowed": ["fixed-width synthetic efficiency on the frozen semantic world"], "forbidden": ["adaptive variable-width credit assignment", "historical 0.694 reproduction"]},
+            claim_ceiling={"allowed": ["fixed mapping efficiency on the frozen semantic world; the paired-replay protocol (not the width) drives the win"], "forbidden": ["adaptive variable-width credit assignment", "width-dependent mechanism claims", "historical 0.694 reproduction"]},
         ),
         ClaimDecision(
             claim_id="variable_width_adaptivity",
@@ -269,6 +270,16 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
             "",
             "## Honesty notes",
             "- docs_only_semantic: new frozen world/seeds/numbers (decision log D9); historical 0.694 and 192/192 are incident background.",
+            "- Mechanism-fail is STRUCTURAL under the pre-registered calibration objective",
+            "  (mean log exact-trace MSE): the raw MSE always prefers the largest width,",
+            "  so the calibrated widths collapse to the global control by construction.",
+            "  The demonstration shows a metric pass does NOT license an adaptive",
+            "  mechanism claim; it does not claim the gate would catch every fake",
+            "  adaptive method (the two-sided behavior of width_diversity_gate is",
+            "  unit-tested directly).",
+            "- Calibration cost: exact CPU enumeration, REPORTED only (protocol shared",
+            "  costs calibration_transitions 0/1), never charged to the test budget",
+            "  (legacy protocol boundary, design 7.3).",
         ]
     )
     return runner.RunResult(

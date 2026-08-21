@@ -150,5 +150,10 @@ def _render_report(index: list[dict]) -> str:
         "  with the paired-replay protocol; the adaptive mechanism claim failed",
         "  (widths collapsed to [2,2,2,2]) and is NOT claimed.",
         "- Every number above traces to the artifact dirs + git commit + SHA256SUMS.",
+        "- Known limitations (design 17.2): the world spec JSON is produced by the",
+        "  primary-side world code; a wrong estimand definition embedded in the spec",
+        "  would align oracle and primary. This is mitigated by (a) two oracles using",
+        "  different algorithms, (b) import isolation tests, and (c) the non-degeneracy",
+        "  pre-gate; it is not a formal proof (no formality claim is made).",
     ]
     return "\n".join(lines)

@@ -13,3 +13,5 @@ wandb_api.txt
 dist/
 build/
 artifacts/local/
+artifacts/*/.*.tmp
+*.tmp

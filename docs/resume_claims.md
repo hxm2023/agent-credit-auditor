@@ -19,8 +19,9 @@ artifacts/v0.1.0 + commit + SHA256SUMS.
   (a) M0: local-to-prefix propagation and BPO-like selection bias are rejected
   (T003) while dense/uniform-HH stay unbiased within 1e-9; a paired-replay
   branching estimator wins the pre-registered matched-budget positive case
-  (bias < 1e-16, ~57x MSE ratio on the frozen focal world, uncoupled control
-  loses ~14x — the win is genuinely mechanism-driven);
+  (bias < 1e-16, MSE ratio 0.017 vs dense on the frozen focal world; the
+  uncoupled control loses 7.0x vs dense — the win is genuinely
+  mechanism-driven; both ratios trace to artifacts/v0.1.0/M0);
   (b) V001: the PC-RSG-style residual correction is calibration-accurate
   (expectation error ~1e-16) yet fixed-budget MSE fails ~26.5x vs dense —
   "calibration accurate" does not imply utility;
