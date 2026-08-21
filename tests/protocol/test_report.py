@@ -10,6 +10,8 @@ import pytest
 from credit_auditor import runner, report
 from credit_auditor.experiments import m0 as m0_exp
 
+pytestmark = pytest.mark.release_report
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -21,7 +23,7 @@ def test_release_report_builds(tmp_path):
         seed_manifests=[ROOT / "configs/seeds/m0_problems.json"],
     )
     root = tmp_path / "artifacts"
-    out = report.build_release_report(root)
+    out = report.build_release_report(root, run_tests=False)
     assert (out / "result_index.json").is_file()
     assert (out / "environment.json").is_file()
     assert (out / "TEST_LOG.txt").is_file()
@@ -43,7 +45,7 @@ def test_release_report_failed_run_enters_index(tmp_path):
     fake = tmp_path / "nofamily.json"
     fake.write_text(json.dumps(proto), encoding="utf-8")
     runner.run(protocol_path=fake, output_dir=tmp_path / "artifacts" / "M0_fail", seed_manifests=[ROOT / "configs/seeds/m0_problems.json"])
-    out = report.build_release_report(tmp_path / "artifacts")
+    out = report.build_release_report(tmp_path / "artifacts", run_tests=False)
     index = json.loads((out / "result_index.json").read_text(encoding="utf-8"))
     entry = next(e for e in index["experiments"] if e["experiment"] == "M0_fail")
     assert entry["exit_status"] == "driver_failed"
@@ -56,7 +58,7 @@ def test_release_report_claim_ceilings_present(tmp_path):
         output_dir=tmp_path / "artifacts" / "M0",
         seed_manifests=[ROOT / "configs/seeds/m0_problems.json"],
     )
-    out = report.build_release_report(tmp_path / "artifacts")
+    out = report.build_release_report(tmp_path / "artifacts", run_tests=False)
     text = (out / "REPORT.md").read_text(encoding="utf-8")
     assert "FORBIDDEN" in text
     assert "docs_only_semantic" in text

@@ -24,7 +24,7 @@ def _load(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def build_release_report(artifact_root: Path, output: Path | None = None) -> Path:
+def build_release_report(artifact_root: Path, output: Path | None = None, run_tests: bool = True) -> Path:
     artifact_root = artifact_root.resolve()
     if not artifact_root.is_dir():
         raise FileNotFoundError(f"artifact root not found: {artifact_root}")
@@ -76,7 +76,10 @@ def build_release_report(artifact_root: Path, output: Path | None = None) -> Pat
         output / "environment.json",
     )
 
-    test_log = _run_tests()
+    if run_tests:
+        test_log = _run_tests()
+    else:
+        test_log = "TEST_LOG skipped (run_tests=False; release build runs it)\n"
     (output / "TEST_LOG.txt").write_text(test_log, encoding="utf-8")
 
     report = _render_report(index)
@@ -87,12 +90,15 @@ def build_release_report(artifact_root: Path, output: Path | None = None) -> Pat
 
 
 def _run_tests() -> str:
+    """Run the test suite for TEST_LOG.txt, EXCLUDING the release-report
+    tests (marked `release_report`) to avoid infinite recursion (a report
+    build inside a report build)."""
     try:
         out = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "--tb=no"],
+            [sys.executable, "-m", "pytest", "-q", "--tb=no", "-m", "not release_report"],
             capture_output=True,
             text=True,
-            timeout=1800,
+            timeout=3600,
         )
         return f"pytest exit={out.returncode}\n{out.stdout[-2000:]}\n{out.stderr[-2000:]}"
     except Exception as e:  # noqa: BLE001
