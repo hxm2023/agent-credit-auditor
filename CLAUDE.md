@@ -57,13 +57,16 @@ adds ARIS execution discipline; it does NOT redesign the project.
   (updates create new versions, old results kept); published numbers traceable to
   artifact + commit + checksum.
 
-## Compute (server TBD — reserved, do not bind)
+## Compute (autodl2 CPU cores — shared; server decided 2026-08-22)
 
-- CPU-first: most work runs anywhere (local laptop sufficient for exact-world
-  audits). GPU only if a future extension needs it — server choice PENDING
-  (candidates: jindun / autodl1 / local). Record choice here when made; GPU
-  contention rules of the chosen box apply.
-- Budget: per design doc §20 (light); checkpoint/resume default.
+- **Server: `ssh autodl2`** (2×RTX 6000D 84GB + 44 vCPU + 1TB RAM) — Auditor runs
+  on the server's CPU cores (0 GPU) in parallel with GRPO-Guard (GPU0/1) and
+  agent-ttrl (shares GPU1 headroom). CPU-first design fits perfectly: exact-world
+  audits are CPU-bound, negligible memory, no interference with GPU projects.
+- Guard/agent-ttrl get GPU priority; Auditor never contends (CPU-only, bounded
+  threads). Checkpoint/resume default; results rsync + git continuously.
+- Local laptop also sufficient for Auditor if server CPU is busy.
+- Budget: per design doc §20 (light).
 
 ## Pipeline (adapted)
 
