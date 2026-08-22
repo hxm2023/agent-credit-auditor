@@ -7,6 +7,7 @@ from pathlib import Path
 
 from credit_auditor import runner
 from credit_auditor.experiments import continuation as _continuation
+from credit_auditor.experiments import continuation_scale as _continuation_scale
 from credit_auditor.experiments import d002 as _d002
 from credit_auditor.experiments import m0 as _m0
 from credit_auditor.experiments import minimal_logging as _minimal_logging
@@ -16,6 +17,7 @@ _m0.register()
 _v001.register()
 _d002.register()
 _continuation.register()
+_continuation_scale.register()
 _minimal_logging.register()
 
 
