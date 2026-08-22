@@ -169,6 +169,7 @@ def _calibration(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": True},
         gate_decision=AuditDecision(experiment_integrity=ClaimStatus.PASS).model_dump(),
         report_md=report,
+        manifest_extra={"raw_results": [{"problem": k, "objective": v[0], "cost": v[1]} for o in cal_objectives for k, v in o.items()]},
     )
 
 
@@ -287,6 +288,7 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": oracle_ok},
         gate_decision=decision.model_dump(),
         report_md=report,
+        manifest_extra={"raw_results": rows},
     )
 
 

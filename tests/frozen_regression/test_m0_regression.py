@@ -41,8 +41,8 @@ def test_m0_claims(m0_run):
 def test_m0_all_problems_pass_env_and_oracle(m0_run):
     man = json.loads((m0_run / "run_manifest.json").read_text(encoding="utf-8"))
     raw = man["raw_results"]
-    assert len(raw["problems"]) == 12
-    for p in raw["problems"]:
+    assert len(raw) == 12
+    for p in raw:
         assert p["environment_gate"]["status"] == "pass", p["problem_id"]
         assert p["oracle"]["oracle_enumeration_match"] and p["oracle"]["oracle_bellman_match"], p["problem_id"]
         statuses = {e["estimator"]: e["gate_status"] for e in p["estimators"]}
@@ -57,8 +57,7 @@ def test_m0_all_problems_pass_env_and_oracle(m0_run):
 
 def test_m0_designed_case_failures_detected(m0_run):
     man = json.loads((m0_run / "run_manifest.json").read_text(encoding="utf-8"))
-    raw = man["raw_results"]
-    by_case = {c["case"]: c for c in raw["designed_cases"]}
+    by_case = {c["case"]: c for c in man["designed_cases"]}
     assert by_case["outcome_retention"]["gate_status"] == "fail"
     assert by_case["outcome_retention"]["reason_codes"] == ["T005_CLIPPING_SCOPE_MISMATCH"]
     assert by_case["completion_deadline"]["gate_status"] == "fail"
@@ -69,8 +68,7 @@ def test_m0_designed_case_failures_detected(m0_run):
 
 def test_m0_matched_cost_positive(m0_run):
     man = json.loads((m0_run / "run_manifest.json").read_text(encoding="utf-8"))
-    raw = man["raw_results"]
-    case = next(c for c in raw["designed_cases"] if c["case"] == "matched_cost_positive")
+    case = next(c for c in man["designed_cases"] if c["case"] == "matched_cost_positive")
     assert case["narrow_positive"] is True
     assert case["mechanism_control_passes"] is True
     assert case["paired_sibling"]["bias_sq"] < 1e-20
@@ -80,8 +78,7 @@ def test_m0_matched_cost_positive(m0_run):
 
 def test_m0_bpo_case_reason_codes(m0_run):
     man = json.loads((m0_run / "run_manifest.json").read_text(encoding="utf-8"))
-    raw = man["raw_results"]
-    case = next(c for c in raw["designed_cases"] if c["case"] == "bpo_prefix_propagation")
+    case = next(c for c in man["designed_cases"] if c["case"] == "bpo_prefix_propagation")
     statuses = {e["estimator"]: e for e in case["estimators"]}
     assert statuses["propagated_sibling"]["reason_codes"] == ["T003_LOCAL_TO_PREFIX_PROPAGATION"]
     assert statuses["bpo_like"]["reason_codes"] == ["T003_LOCAL_TO_PREFIX_PROPAGATION"]

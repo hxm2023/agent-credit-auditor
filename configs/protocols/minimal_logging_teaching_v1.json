@@ -1,0 +1,24 @@
+{
+  "protocol_id": "minimal_logging_teaching_v1",
+  "protocol_version": "v1",
+  "description": "Minimal-logging teaching asset, docs_only_semantic (design 8.5, 13.5). Frozen 8x3 universe: eligibility enumeration over point and sign-coarsened labels. NOVELTY STATUS: classical decision-reduct / FD / hitting-set equivalence; teaching only.",
+  "reconstruction_mode": "docs_only_semantic",
+  "frozen_at": "2026-08-22",
+  "world_family": "minimal_logging_teaching_v1",
+  "policy_parameterization": "telemetry_schema",
+  "reward_semantics": "labels",
+  "primary_estimand": "schema_identifiability",
+  "claims": [
+    {
+      "claim_id": "minimal_logging_teaching",
+      "status_expected": "SUPPORT_ONLY",
+      "claim_text": "the logging-schema problem over the frozen 8x3 universe is the classical decision-reduct / FD / hitting-set problem (teaching asset)"
+    }
+  ],
+  "expected_outcome": {
+    "point_total": 256,
+    "point_eligible_gt_zero": true,
+    "sign_eligible_ge_point": true
+  },
+  "fault_injection_expected": {}
+}

@@ -20,6 +20,11 @@ def pc_rsg_distribution(
     world: BernoulliSequenceMDP, q: tuple[float, ...], branch_width: int = 2
 ) -> list[WeightedVector]:
     H = world.horizon
+    if branch_width != 2:
+        # The marginalized exact enumeration implements one coupled sibling
+        # pair per sampled decision; larger widths would need the joint
+        # continuation-pair enumeration (documented limitation).
+        raise NotImplementedError("pc_rsg exact distribution implemented for branch_width=2 only")
     if len(q) != H or abs(sum(q) - 1.0) > 1e-12:
         raise ValueError(f"q must be a length-{H} probability vector")
     out: list[WeightedVector] = []

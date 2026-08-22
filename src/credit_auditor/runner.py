@@ -71,10 +71,6 @@ class RunResult:
     manifest_extra: dict[str, Any] = field(default_factory=dict)
 
 
-class ExperimentDriver(Protocol):
-    def run(self, ctx: RunContext) -> RunResult: ...
-
-
 _DRIVERS: dict[str, dict[str, Callable[[RunContext], RunResult]]] = {}
 
 
@@ -103,10 +99,7 @@ def _seed_manifest_hashes(paths: list[Path]) -> dict[str, str]:
 
 def validate_protocol(protocol_path: Path) -> Protocol:
     data = json.loads(protocol_path.read_text(encoding="utf-8"))
-    proto = Protocol.model_validate(data)
-    if proto.protocol_id not in proto.protocol_id.replace("_v1", ""):
-        pass
-    return proto
+    return Protocol.model_validate(data)
 
 
 def check_split_disjoint(cal_path: Path | None, test_path: Path | None) -> None:
@@ -247,6 +240,10 @@ def _write_package(
     atomic_write_text(run_result.report_md, dirpath / "REPORT.md")
     if run_result.result.get("selection") is not None:
         atomic_write_json(run_result.result["selection"], dirpath / "selection.json")
+    raw = run_result.manifest_extra.get("raw_results")
+    if isinstance(raw, list) and raw:
+        from credit_auditor.canonical import write_jsonl_zst
+        write_jsonl_zst(raw, dirpath / "raw_rows.jsonl.zst")
 
     sums = {k: v for k, v in sha256_tree(dirpath).items() if k != "SHA256SUMS"}
     lines = [f"{v}  {k}" for k, v in sorted(sums.items())]

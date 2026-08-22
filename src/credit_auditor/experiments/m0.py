@@ -338,7 +338,7 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": True, "oracle_import_isolation": [check_import_isolation(ORACLE_DIR / "enumeration_oracle.py"), check_import_isolation(ORACLE_DIR / "bellman_oracle.py")]},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": results},
+        manifest_extra={"raw_results": results["problems"], "designed_cases": results["designed_cases"]},
     )
 
 

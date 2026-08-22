@@ -29,3 +29,6 @@ packages = ["src/credit_auditor"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "release_report: release-report builder tests (excluded from nested TEST_LOG runs)",
+]

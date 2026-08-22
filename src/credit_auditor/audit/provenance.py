@@ -18,6 +18,7 @@ REQUIRED_PACKAGE_FILES = [
     "oracle_result.json",
     "gate_decision.json",
     "run_manifest.json",
+    "raw_rows.jsonl.zst",
     "REPORT.md",
     "SHA256SUMS",
 ]

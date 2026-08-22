@@ -6,13 +6,17 @@ import sys
 from pathlib import Path
 
 from credit_auditor import runner
+from credit_auditor.experiments import continuation as _continuation
 from credit_auditor.experiments import d002 as _d002
 from credit_auditor.experiments import m0 as _m0
+from credit_auditor.experiments import minimal_logging as _minimal_logging
 from credit_auditor.experiments import v001 as _v001
 
 _m0.register()
 _v001.register()
 _d002.register()
+_continuation.register()
+_minimal_logging.register()
 
 
 def main(argv: list[str] | None = None) -> int:

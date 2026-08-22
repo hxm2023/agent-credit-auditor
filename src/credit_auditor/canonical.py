@@ -100,3 +100,23 @@ def atomic_write_text(text: str, path: Path) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(path)
+
+
+def write_jsonl_zst(rows: list[Any], path: Path) -> None:
+    """§18 package format: raw rows as zstd-compressed JSONL (one object per
+    line), written atomically."""
+    import zstandard as zstd
+
+    payload = "\n".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) for row in rows) + "\n"
+    compressed = zstd.ZstdCompressor().compress(payload.encode("utf-8"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(compressed)
+    tmp.replace(path)
+
+
+def read_jsonl_zst(path: Path) -> list[Any]:
+    import zstandard as zstd
+
+    data = zstd.ZstdDecompressor().decompress(path.read_bytes())
+    return [json.loads(line) for line in data.decode("utf-8").splitlines() if line.strip()]

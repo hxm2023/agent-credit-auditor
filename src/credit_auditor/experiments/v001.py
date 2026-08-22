@@ -208,6 +208,7 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": oracle_ok},
         gate_decision=decision.model_dump(),
         report_md=report,
+        manifest_extra={"raw_results": rows},
     )
 
 
