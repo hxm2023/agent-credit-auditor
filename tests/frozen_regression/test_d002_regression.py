@@ -82,6 +82,42 @@ def test_d002_test_refuses_unfrozen_selection(tmp_path):
     assert manifest["exit_status"] == "driver_failed"
 
 
+def test_d002_tampered_selection_rejected(tmp_path):
+    """A8 lineage: an edited selection (tampered widths) must be rejected by
+    the self-hash check, not silently used."""
+    import copy
+    d002_exp.register()
+    cal = runner.run(
+        protocol_path=ROOT / "configs/protocols/d002_regression_v1.json",
+        output_dir=tmp_path / "D002_cal",
+        phase="calibration",
+        seed_manifests=[ROOT / "configs/seeds/d002_calibration.json"],
+    )
+    sel = json.loads((cal / "selection.json").read_text(encoding="utf-8"))
+    tampered = copy.deepcopy(sel)
+    first_bucket = next(iter(tampered["selected_mapping"]))
+    tampered["selected_mapping"][first_bucket][1] = 8  # edit a width
+    tampered_path = tmp_path / "tampered_selection.json"
+    tampered_path.write_text(json.dumps(tampered), encoding="utf-8")
+    out = runner.run(
+        protocol_path=ROOT / "configs/protocols/d002_regression_v1.json",
+        output_dir=tmp_path / "D002_test_tampered",
+        phase="test",
+        frozen_selection=tampered_path,
+        seed_manifests=[ROOT / "configs/seeds/d002_test.json"],
+    )
+    manifest = json.loads((out / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["exit_status"] == "driver_failed"
+    result = json.loads((out / "result.json").read_text(encoding="utf-8"))
+    assert "content hash mismatch" in result.get("error", "")
+
+
+def test_d002_test_manifest_records_parent_selection_hash(d002_pipeline):
+    _, test = d002_pipeline
+    manifest = json.loads((test / "run_manifest.json").read_text(encoding="utf-8"))
+    assert len(manifest.get("parent_calibration_selection_sha256", "")) == 64
+
+
 def test_d002_selection_hash_stable(d002_pipeline):
     """The frozen selection must be content-hashed and versioned (A8 lineage)."""
     cal, _ = d002_pipeline

@@ -15,6 +15,11 @@ dependencies = [
 dev = [
     "pytest>=8.0",
 ]
+# Design §25: the guard extra pins the GRPO-Guard core schema major/minor.
+# The pinned version lives in src/credit_auditor/adapters/grpo_guard_envelope.py
+# (GUARD_SCHEMA = grpo-guard-envelope-1.0); the extra stays empty until the
+# Guard schema package is published — unknown majors are rejected fail-closed.
+guard = []
 
 [project.scripts]
 credit-auditor = "credit_auditor.cli:main"

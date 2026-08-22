@@ -180,11 +180,21 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         raise runner.DriverError("d002_test seed manifest required")
     tests = json.loads(test_path.read_text(encoding="utf-8"))["rows"]
 
-    # A8: test phase requires the frozen selection
+    # A8: test phase requires the frozen selection AND its content must be
+    # tamper-evident: the selection's self-hash must match its body, so an
+    # edited mapping (e.g. hand-picked widths) is rejected, not silently used.
     if ctx.frozen_selection is None or not ctx.frozen_selection.is_file():
         raise runner.DriverError("test phase requires --frozen-selection (A8: no test-time reselection)")
     selection = json.loads(ctx.frozen_selection.read_text(encoding="utf-8"))
+    from credit_auditor.canonical import sha256_json
+    body = {k: v for k, v in selection.items() if k != "selection_sha256"}
+    if sha256_json(body) != selection.get("selection_sha256"):
+        raise runner.DriverError(
+            "frozen selection content hash mismatch: the selection file was modified "
+            "after calibration (A8 lineage violation)"
+        )
     mapping = {k: tuple(v) for k, v in selection["selected_mapping"].items()}
+    selection_hash = selection["selection_sha256"]
 
     rows: list[dict] = []
     ratios: list[float] = []
@@ -288,7 +298,7 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": oracle_ok},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": rows},
+        manifest_extra={"raw_results": rows, "parent_calibration_selection_sha256": selection_hash},
     )
 
 

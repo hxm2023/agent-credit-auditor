@@ -36,6 +36,9 @@ def main(argv: list[str] | None = None) -> int:
     p_audit = sub.add_parser("audit", help="audit an artifact directory")
     p_audit.add_argument("--artifact-dir", required=True, type=Path)
 
+    p_guard = sub.add_parser("validate-guard-envelope", help="fail-closed validation of a GRPO-Guard envelope (design 25)")
+    p_guard.add_argument("--envelope", required=True, type=Path)
+
     p_report = sub.add_parser("report", help="build release report from artifact root")
     p_report.add_argument("--artifact-root", required=True, type=Path)
     p_report.add_argument("--output", type=Path, default=None)
@@ -83,6 +86,16 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  - {e}")
         # §12: INVALID evidence means the experiment cannot support claims
         return 1 if decision["integrity"] != "pass" else 0
+
+    if args.command == "validate-guard-envelope":
+        import json as _json
+
+        from credit_auditor.adapters.grpo_guard_envelope import validate_guard_envelope
+
+        envelope = _json.loads(args.envelope.read_text(encoding="utf-8"))
+        out = validate_guard_envelope(envelope)
+        print(f"status={out['status']}" + (f" reason={out['reason']}" if "reason" in out else ""))
+        return 0 if out["status"] == "ALLOW" else 1
 
     if args.command == "report":
         from credit_auditor.report import build_release_report

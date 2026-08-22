@@ -16,6 +16,7 @@ Structure:
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -84,6 +85,7 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
     for row in problems:
         q_by_h.setdefault(row["horizon"], _q_uniform_floor(row["horizon"], epsilon))
     calibration_accuracy: list[dict] = []
+    _cal_t0 = time.perf_counter()
     for row in cal:
         w = deterministic_world(row["seed"], 6)
         q = _q_uniform_floor(6, epsilon)
@@ -95,6 +97,7 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
             m = exact_moments(dist, mu_target)
             cal_rows.append({"t": t, "expectation_err": float(np.max(np.abs(m.bias)))})
         calibration_accuracy.append({"problem": row["problem_id"], "max_expectation_err": max(r["expectation_err"] for r in cal_rows)})
+    calibration_cpu_seconds = time.perf_counter() - _cal_t0  # §7.3: reported only
 
     # ---- test problems: moments + fixed-budget MSE ----
     rows: list[dict] = []
@@ -203,6 +206,7 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
             "primary_budget": primary_budget,
             "problems": rows,
             "calibration_accuracy": calibration_accuracy,
+            "calibration_cpu_seconds": calibration_cpu_seconds,  # §7.3 reported only
             "bootstrap": {"vs_dense": boot_dense, "vs_hh": boot_hh},
         },
         oracle_result={"oracle_ok": oracle_ok},
