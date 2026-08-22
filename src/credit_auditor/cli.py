@@ -39,6 +39,10 @@ def main(argv: list[str] | None = None) -> int:
     p_guard = sub.add_parser("validate-guard-envelope", help="fail-closed validation of a GRPO-Guard envelope (design 25)")
     p_guard.add_argument("--envelope", required=True, type=Path)
 
+    p_legacy = sub.add_parser("validate-legacy-bundle", help="validate a legacy migration bundle (design 13.6)")
+    p_legacy.add_argument("--bundle", required=True, type=Path)
+    p_legacy.add_argument("--anchor", default=None, help="out-of-band root sha256 trust anchor")
+
     p_report = sub.add_parser("report", help="build release report from artifact root")
     p_report.add_argument("--artifact-root", required=True, type=Path)
     p_report.add_argument("--output", type=Path, default=None)
@@ -96,6 +100,17 @@ def main(argv: list[str] | None = None) -> int:
         out = validate_guard_envelope(envelope)
         print(f"status={out['status']}" + (f" reason={out['reason']}" if "reason" in out else ""))
         return 0 if out["status"] == "ALLOW" else 1
+
+    if args.command == "validate-legacy-bundle":
+        from credit_auditor.adapters.legacy_bundle import validate_legacy_bundle
+
+        out = validate_legacy_bundle(args.bundle, anchor_root_sha256=args.anchor)
+        print(f"status={out['status']}")
+        for r in out.get("reasons", out.get("structural_reasons", [])):
+            print(f"  - {r}")
+        if out.get("root_sha256"):
+            print(f"root_sha256={out['root_sha256']}")
+        return 0 if out["status"] == "VALID" else 1
 
     if args.command == "report":
         from credit_auditor.report import build_release_report
