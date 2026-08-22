@@ -263,8 +263,10 @@ def _git_commit() -> str | None:
 
 
 def _git_dirty() -> bool:
+    """Dirty = uncommitted changes to TRACKED files. Untracked outputs (the
+    artifact being published) must not make the release manifest dirty."""
     try:
-        out = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
-        return bool(out.stdout.strip())
+        out = subprocess.run(["git", "diff", "--quiet", "HEAD"], capture_output=True, text=True)
+        return out.returncode != 0
     except Exception:  # noqa: BLE001
         return True
