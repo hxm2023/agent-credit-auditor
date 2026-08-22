@@ -97,9 +97,38 @@ def _seed_manifest_hashes(paths: list[Path]) -> dict[str, str]:
     return {p.name: sha256_file(p) for p in paths}
 
 
+KNOWN_GATES = {
+    "integrity", "target_identity", "independent_oracle", "sampling_support",
+    "matched_cost", "heldout_split", "utility", "mechanism", "environment",
+    "provenance", "numerical_margin", "novelty",
+}
+
+
 def validate_protocol(protocol_path: Path) -> Protocol:
+    """Parse + validate a frozen protocol, then check gate/reason-code
+    consistency: unknown gate names, unknown reason codes, or unknown claim
+    gates fail fast at validate time (no silent typos in frozen configs)."""
+    from credit_auditor.schema import ReasonCode
+
     data = json.loads(protocol_path.read_text(encoding="utf-8"))
-    return Protocol.model_validate(data)
+    proto = Protocol.model_validate(data)
+
+    known_reason_codes = {rc.value for rc in ReasonCode}
+    gates = proto.gates or {}
+    unknown_gates = [g for g in gates if g not in KNOWN_GATES]
+    if unknown_gates:
+        raise ValueError(f"protocol {proto.protocol_id}: unknown gate(s) {unknown_gates}")
+    for gate, spec in gates.items():
+        codes = spec.get("reason_codes", []) if isinstance(spec, dict) else []
+        bad = [c for c in codes if c not in known_reason_codes]
+        if bad:
+            raise ValueError(f"protocol {proto.protocol_id} gate {gate}: unknown reason code(s) {bad}")
+    for claim in proto.claims or []:
+        req = claim.get("required_gates", []) if isinstance(claim, dict) else []
+        bad = [g for g in req if g not in KNOWN_GATES]
+        if bad:
+            raise ValueError(f"protocol {proto.protocol_id} claim {claim.get('claim_id')}: unknown required gate(s) {bad}")
+    return proto
 
 
 def check_split_disjoint(cal_path: Path | None, test_path: Path | None) -> None:

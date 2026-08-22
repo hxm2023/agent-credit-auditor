@@ -38,40 +38,20 @@ background only and never appear as reproduced results.
 ```bash
 uv sync --frozen
 
-# validate the frozen protocols (pre-registration, content-hashed)
-uv run credit-auditor validate-protocol configs/protocols/m0_regression_v1.json
+# one-command reproduction of the full release (all six packs + report)
+bash scripts/reproduce_all.sh artifacts/v0.1.1
 
-# M0: target audit (12 frozen problems + 5 designed cases)
-uv run credit-auditor run \
-  --protocol configs/protocols/m0_regression_v1.json \
-  --output artifacts/local/M0 \
-  --seed configs/seeds/m0_problems.json
-
-# V001: expected utility failure (calibration accurate, utility FAILS)
-uv run credit-auditor run \
-  --protocol configs/protocols/v001_failure_v1.json \
-  --output artifacts/local/V001 \
-  --seed configs/seeds/v001_problems.json \
-  --seed configs/seeds/v001_calibration.json
-
-# D002: calibration freezes the mapping, test refuses any other selection
-uv run credit-auditor run \
-  --protocol configs/protocols/d002_regression_v1.json \
-  --phase calibration --output artifacts/local/D002_cal \
-  --seed configs/seeds/d002_calibration.json
-uv run credit-auditor run \
-  --protocol configs/protocols/d002_regression_v1.json \
-  --phase test --output artifacts/local/D002_test \
-  --frozen-selection artifacts/local/D002_cal/selection.json \
-  --seed configs/seeds/d002_test.json
-
-# audit + release report
-uv run credit-auditor audit --artifact-dir artifacts/local/M0
-uv run credit-auditor report --artifact-root artifacts/v0.1.0
+# or run the packs individually
+bash scripts/run_m0.sh      # target audit
+bash scripts/run_v001.sh    # expected utility failure
+bash scripts/run_d002.sh    # calibration + frozen test
+uv run credit-auditor audit --artifact-dir artifacts/local/M0   # claims + ceilings
 ```
 
 The runner never overwrites canonical outputs; re-runs must target new
-directories, and every package carries `run_manifest.json` + `SHA256SUMS`.
+directories, and every package carries `run_manifest.json` + `raw_rows.jsonl.zst`
++ `SHA256SUMS`. Frozen protocols are content-hashed; any edit is a
+decision-logged version bump.
 
 ## Headline results (docs_only_semantic, all numbers new)
 
@@ -103,11 +83,24 @@ src/credit_auditor/
   estimators/    plugin implementations (§9)
   oracles/       self-contained Bellman/enumeration oracles in separate processes (§10)
   audit/         T/S/C/U/M/D/E/N gates (§11) + A1-A14 fault matrix (§14)
-  experiments/   m0 / v001 / d002 semantic regression drivers (§13)
+  adapters/      GRPO-Guard envelope validation (§25, v0.2-prep, fail-closed)
+  experiments/   m0 / v001 / d002 / continuation / minimal_logging drivers (§13)
   report.py      claim ceilings, reason codes, release report
+scripts/         run_m0.sh / run_v001.sh / run_d002.sh / reproduce_all.sh
 tests/           math units, oracle independence, protocol/evidence, fault injection
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
+
+## v0.1.1 additions
+
+- `scripts/reproduce_all.sh`: one-command reproduction of the full release.
+- GRPO-Guard envelope adapter (§25): `CreditAuditBundle` references Guard
+  envelopes by sha256 only; validation fails closed on unknown schema major,
+  unknown required extensions, or missing hashes; CPU-only, no Guard server.
+- Protocol validation rejects unknown gate names / reason codes / claim gates
+  at validate time (typos cannot silently enter frozen configs).
+- `credit-auditor audit` prints per-claim status + ceiling and exits nonzero
+  when evidence integrity fails.
 
 ## Status semantics
 

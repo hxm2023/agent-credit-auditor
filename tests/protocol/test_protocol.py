@@ -134,3 +134,30 @@ def test_published_package_hashes_match(tmp_path: Path):
 def test_protocol_family_registration():
     with pytest.raises(Exception):
         runner.get_driver("no_such_family", "run")
+
+
+def test_unknown_gate_rejected(tmp_path):
+    proto = json.loads((PROTOCOLS / "m0_regression_v1.json").read_text(encoding="utf-8"))
+    proto["gates"]["extra_gate"] = {"required": True}  # unknown top-level gate
+    fake = tmp_path / "bad_gate.json"
+    fake.write_text(json.dumps(proto), encoding="utf-8")
+    with pytest.raises(ValueError, match="unknown gate"):
+        runner.validate_protocol(fake)
+
+
+def test_unknown_reason_code_rejected(tmp_path):
+    proto = json.loads((PROTOCOLS / "m0_regression_v1.json").read_text(encoding="utf-8"))
+    proto["gates"]["target_identity"]["reason_codes"].append("T999_TYPO")
+    fake = tmp_path / "bad_code.json"
+    fake.write_text(json.dumps(proto), encoding="utf-8")
+    with pytest.raises(ValueError, match="unknown reason code"):
+        runner.validate_protocol(fake)
+
+
+def test_unknown_claim_gate_rejected(tmp_path):
+    proto = json.loads((PROTOCOLS / "d002_regression_v1.json").read_text(encoding="utf-8"))
+    proto["claims"][0]["required_gates"].append("not_a_gate")
+    fake = tmp_path / "bad_claim.json"
+    fake.write_text(json.dumps(proto), encoding="utf-8")
+    with pytest.raises(ValueError, match="unknown required gate"):
+        runner.validate_protocol(fake)

@@ -62,9 +62,27 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "audit":
         from credit_auditor.audit.provenance import audit_artifact_dir
+        from credit_auditor.schema import ClaimStatus
+
         decision = audit_artifact_dir(args.artifact_dir)
-        print(f"integrity={decision.get('integrity', 'unknown')}")
-        return 0
+        gd_path = args.artifact_dir / "gate_decision.json"
+        claims: list[str] = []
+        if gd_path.is_file():
+            import json as _json
+            gd = _json.loads(gd_path.read_text(encoding="utf-8"))
+            for c in gd.get("claims", []):
+                ceiling = c.get("claim_ceiling", {}).get("forbidden", [])
+                suffix = f"  ceiling: {ceiling[0]}" if ceiling else ""
+                claims.append(f"  {c['claim_id']}: {c['status']}{suffix}")
+        print(f"integrity={decision['integrity']}")
+        for line in claims:
+            print(line)
+        if decision["errors"]:
+            print("errors:")
+            for e in decision["errors"]:
+                print(f"  - {e}")
+        # §12: INVALID evidence means the experiment cannot support claims
+        return 1 if decision["integrity"] != "pass" else 0
 
     if args.command == "report":
         from credit_auditor.report import build_release_report
