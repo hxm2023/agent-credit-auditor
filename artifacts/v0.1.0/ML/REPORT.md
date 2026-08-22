@@ -9,7 +9,7 @@ CLAIM STATUS: TEACHING OR TELEMETRY-SCHEMA DIAGNOSTIC ONLY (design 13.5)
 - point minimal-schema-size distribution: {1: 36, 2: 684, 3: 64812, 0: 4}
 - sign minimal-schema-size distribution: {1: 1536, 2: 7680, 3: 55808, 0: 512}
 - default-universe minimal schemas: [(0, 1, 2)]
-- runtime: 1.90 CPU seconds (GPU 0)
+- runtime: 1.93 CPU seconds (GPU 0)
 
 ## Honesty notes
 - docs_only_semantic: new frozen universe; the legacy counts
