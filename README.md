@@ -93,6 +93,18 @@ tests/           math units, oracle independence, protocol/evidence, fault injec
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
 
+## v0.1.3 additions
+
+- **GRPO-Guard real-trajectory integration (§25 bridge)**: REAL Guard-issued
+  trajectory envelopes (frozen fixtures copied from the GRPO-Guard repo) now
+  flow through the Auditor's `CreditAuditBundle` validation — hash-only
+  references, fail-closed pin on `grpo-guard-envelope-1.0` (the Guard repo's
+  own schema version), no write-back. `scripts/run_guard_demo.sh` runs the
+  demo; this is the exact-toy → real-toolchain connection.
+- **Interview narrative**: [`docs/tech_narrative.md`](docs/tech_narrative.md)
+  — the 10-minute technical story with the honest designed-vs-discovered
+  distinction and the §24.4 FAQ answers.
+
 ## v0.1.2 additions
 
 - **Fraction-exact cross-validation**: M0's frozen problems are verified with

@@ -1,6 +1,6 @@
 [project]
 name = "credit-auditor"
-version = "0.1.2"
+version = "0.1.3"
 description = "Agent-RL Credit Auditor: CPU-first audit & exact benchmark for credit estimators in agent RL"
 readme = "README.md"
 requires-python = ">=3.10"
