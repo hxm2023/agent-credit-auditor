@@ -82,6 +82,41 @@ def _d002_bellman(spec):
     return g
 
 
+def _bernoulli_fraction_bellman(spec):
+    """EXACT Bellman DP with fractions.Fraction (design §10.3): output as
+    "a/b" strings, enabling mismatch == 0 against the primary."""
+    from fractions import Fraction
+
+    probs = [Fraction(x) for x in spec["probabilities"]]
+    rewards = spec["rewards"]
+    h = len(probs)
+    q: dict[str, Fraction] = {}
+    for key, r in rewards.items():
+        q[key] = Fraction(r)
+    for t in range(h - 1, -1, -1):
+        p_t = probs[t]
+        for bits in range(1 << t):
+            h_pref = ",".join(str((bits >> (t - 1 - tt)) & 1) for tt in range(t)) if t > 0 else ""
+            prefix = h_pref if h_pref else ""
+            q1 = q[(prefix + ",1") if prefix else "1"]
+            q0 = q[(prefix + ",0") if prefix else "0"]
+            q[prefix] = p_t * q1 + (1 - p_t) * q0
+    g = [Fraction(0)] * h
+    for t in range(h):
+        p_t = probs[t]
+        for bits in range(1 << t):
+            h_pref = ",".join(str((bits >> (t - 1 - tt)) & 1) for tt in range(t)) if t > 0 else ""
+            prefix = h_pref if h_pref else ""
+            p_h = Fraction(1)
+            for tt in range(t):
+                ht = (bits >> (t - 1 - tt)) & 1
+                p_h *= probs[tt] if ht else 1 - probs[tt]
+            k1 = (prefix + ",1") if prefix else "1"
+            k0 = (prefix + ",0") if prefix else "0"
+            g[t] += p_h * p_t * (1 - p_t) * (q[k1] - q[k0])
+    return [f"{x.numerator}/{x.denominator}" for x in g]
+
+
 def _bernoulli_bellman(spec):
     probs = [float(x) for x in spec["probabilities"]]
     rewards = spec["rewards"]
@@ -124,17 +159,23 @@ def main() -> int:
         g = _d002_bellman(spec)
         oracle_name = "bellman_d002"
         n_states = sum(2 * (b["horizon"] + 1) for b in spec["buckets"])
+    elif world == "bernoulli_fraction_mdp":
+        g = _bernoulli_fraction_bellman(spec)
+        oracle_name = "bellman_fraction"
+        n_states = sum(1 << t for t in range(len(spec["probabilities"]) + 1))
     else:
         g, h = _bernoulli_bellman(spec)
         oracle_name = "bellman"
         n_states = sum(1 << t for t in range(h + 1))
 
     input_sha = hashlib.sha256(json.dumps(spec, sort_keys=True).encode("utf-8")).hexdigest()
+    # Fraction worlds return "a/b" strings for EXACT comparison (== 0).
+    is_fraction = world == "bernoulli_fraction_mdp"
     out = {
-        "gradient": [float(x) for x in g],
+        "gradient": [x for x in g] if is_fraction else [float(x) for x in g],
         "oracle": oracle_name,
         "input_sha256": input_sha,
-        "precision": "float64",
+        "precision": "exact_fraction" if is_fraction else "float64",
         "n_states": n_states,
     }
     sys.stdout.write(json.dumps(out))

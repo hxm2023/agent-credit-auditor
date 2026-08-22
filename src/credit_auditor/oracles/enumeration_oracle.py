@@ -39,6 +39,27 @@ def _bernoulli_sequence(spec):
     return g
 
 
+def _bernoulli_fraction(spec):
+    """EXACT enumeration with fractions.Fraction (design §10.3): the gradient
+    is returned as "a/b" strings so the comparison with the primary can be
+    exactly equal (mismatch == 0), not just within float tolerance."""
+    from fractions import Fraction
+
+    probs = [Fraction(x) for x in spec["probabilities"]]
+    rewards = spec["rewards"]
+    h = len(probs)
+    g = [Fraction(0)] * h
+    for bits in range(1 << h):
+        a = tuple((bits >> (h - 1 - t)) & 1 for t in range(h))
+        p = Fraction(1)
+        for t, at in enumerate(a):
+            p *= probs[t] if at else 1 - probs[t]
+        r = Fraction(rewards[",".join(str(x) for x in a)])
+        for t in range(h):
+            g[t] += p * r * (a[t] - probs[t])
+    return [f"{x.numerator}/{x.denominator}" for x in g]
+
+
 def _d002(spec):
     """D002 shared-logit world: enumerate all (states, actions) paths per
     bucket; gradient wrt the 3 shared logits (score a - p)."""
@@ -94,7 +115,10 @@ def _d002(spec):
 def main() -> int:
     spec = json.load(sys.stdin)
     world = spec.get("world", "bernoulli_sequence_mdp")
-    if world == "bernoulli_sequence_mdp":
+    if world == "bernoulli_fraction_mdp":
+        g = _bernoulli_fraction(spec)
+        n = 1 << len(spec["probabilities"])
+    elif world == "bernoulli_sequence_mdp":
         g = _bernoulli_sequence(spec)
         n = 1 << len(spec["probabilities"])
     elif world == "d002_shared_logits_mdp":
@@ -103,11 +127,14 @@ def main() -> int:
     else:
         raise ValueError(f"unknown world {world!r}")
     input_sha = hashlib.sha256(json.dumps(spec, sort_keys=True).encode("utf-8")).hexdigest()
+    # Fraction worlds return "a/b" strings for EXACT comparison (== 0);
+    # float worlds return numbers.
+    is_fraction = world == "bernoulli_fraction_mdp"
     out = {
-        "gradient": [float(x) for x in g],
-        "oracle": "enumeration",
+        "gradient": [x for x in g] if is_fraction else [float(x) for x in g],
+        "oracle": "enumeration_fraction" if is_fraction else "enumeration",
         "input_sha256": input_sha,
-        "precision": "float64",
+        "precision": "exact_fraction" if is_fraction else "float64",
         "n_paths": n,
     }
     sys.stdout.write(json.dumps(out))

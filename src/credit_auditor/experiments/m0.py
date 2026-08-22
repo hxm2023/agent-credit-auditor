@@ -170,6 +170,44 @@ def _moment_rows(world: BernoulliSequenceMDP, target: np.ndarray, tolerance: dic
     return rows
 
 
+def _fraction_exact_check(seeds: list[dict]) -> dict:
+    """Design §10.3: on the frozen problems the Fraction-exact primary and the
+    two Fraction oracles must align EXACTLY (mismatch == 0), not just within
+    float tolerance. The seeded worlds are rational (dyadic draws), so the
+    exact conversion is lossless modulo float input representation."""
+    from fractions import Fraction
+
+    from credit_auditor.worlds.fraction_world import BernoulliFractionMDP
+
+    rows: list[dict] = []
+    for row in seeds:
+        world = deterministic_world(row["seed"], row["horizon"])
+        fw = BernoulliFractionMDP.from_float_world(world)
+        target = fw.true_gradient()
+        enum = runner.run_oracle_subprocess(ORACLE_DIR / "enumeration_oracle.py", fw.to_spec())
+        bell = runner.run_oracle_subprocess(ORACLE_DIR / "bellman_oracle.py", fw.to_spec())
+
+        def parse(vals: list) -> tuple[Fraction, ...]:
+            return tuple(Fraction(x) for x in vals)
+
+        mism_enum = max((abs(a - b) for a, b in zip(target, parse(enum["gradient"]))), default=Fraction(0))
+        mism_bell = max((abs(a - b) for a, b in zip(target, parse(bell["gradient"]))), default=Fraction(0))
+        rows.append(
+            {
+                "problem_id": row["problem_id"],
+                "oracle_enumeration_exact": mism_enum == 0,
+                "oracle_bellman_exact": mism_bell == 0,
+                "max_mismatch_enumeration": str(mism_enum),
+                "max_mismatch_bellman": str(mism_bell),
+            }
+        )
+    return {
+        "mode": "fraction_exact",
+        "all_exact": all(r["oracle_enumeration_exact"] and r["oracle_bellman_exact"] for r in rows),
+        "rows": rows,
+    }
+
+
 def _run_oracle_pair(world: BernoulliSequenceMDP) -> dict:
     enum = runner.run_oracle_subprocess(ORACLE_DIR / "enumeration_oracle.py", world.to_spec())
     bell = runner.run_oracle_subprocess(ORACLE_DIR / "bellman_oracle.py", world.to_spec())
@@ -292,6 +330,10 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
         }
     )
 
+    # ---- Fraction-exact cross-validation (§10.3) ----
+    frac_check = _fraction_exact_check(seeds)
+    results["fraction_exact_check"] = frac_check
+
     # ---- claims ----
     dense_ok = all(
         r["estimator"] != "dense" or r["gate_status"] == "pass"
@@ -299,6 +341,7 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
     )
     oracle_ok = all(p["oracle"]["oracle_enumeration_match"] and p["oracle"]["oracle_bellman_match"] for p in results["problems"])
     env_ok = all(p["environment_gate"]["status"] == "pass" for p in results["problems"])
+    fraction_exact_ok = bool(frac_check["all_exact"])
     claims = [
         ClaimDecision(
             claim_id="dense_unbiased_full_gradient",
@@ -322,9 +365,16 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
             required_gates=["target_identity", "independent_oracle", "matched_cost", "mechanism"],
             claim_ceiling={"allowed": ["narrow synthetic positive on frozen designed world"], "forbidden": ["general branching superiority", "adaptive credit assignment"]},
         ),
+        ClaimDecision(
+            claim_id="fraction_exact_oracle_alignment",
+            claim_text="Fraction-exact primary and both Fraction oracles agree EXACTLY (mismatch == 0) on all frozen problems",
+            status=ClaimStatus.PASS if fraction_exact_ok else ClaimStatus.FAIL,
+            required_gates=["independent_oracle"],
+            claim_ceiling={"allowed": ["exact finite-MDP target verification on frozen rational worlds"], "forbidden": ["formality beyond the enumerated worlds", "LLM-agent utility"]},
+        ),
     ]
     integrity = ClaimStatus.PASS
-    if not (dense_ok and oracle_ok and env_ok):
+    if not (dense_ok and oracle_ok and env_ok and fraction_exact_ok):
         integrity = ClaimStatus.INVALID
     decision = AuditDecision(
         experiment_integrity=integrity,
@@ -334,7 +384,7 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
 
     report = _render_report(results, decision)
     return runner.RunResult(
-        result={"status": "ok", "problem_count": len(results["problems"]), "designed_cases": [c["case"] for c in results["designed_cases"]]},
+        result={"status": "ok", "problem_count": len(results["problems"]), "designed_cases": [c["case"] for c in results["designed_cases"]], "fraction_exact_check": frac_check},
         oracle_result={"oracle_ok": True, "oracle_import_isolation": [check_import_isolation(ORACLE_DIR / "enumeration_oracle.py"), check_import_isolation(ORACLE_DIR / "bellman_oracle.py")]},
         gate_decision=decision.model_dump(),
         report_md=report,
@@ -349,6 +399,7 @@ def _render_report(results: dict, decision: AuditDecision) -> str:
         f"- protocol: {results['protocol']}",
         f"- problems: {len(results['problems'])}",
         "- designed cases: " + ", ".join(c["case"] for c in results["designed_cases"]),
+        f"- fraction-exact oracle alignment (mismatch == 0): {results.get('fraction_exact_check', {}).get('all_exact')}",
         "",
         "## Claim decisions",
     ]
