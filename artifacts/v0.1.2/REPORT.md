@@ -33,6 +33,8 @@
 - `minimal_logging_teaching`: **support_only**
 - headline: {'proposed_new_method_claim': 'support_only', 'retained_narrow_claim': None}
 
+### scale_supplement  (integrity: fail, exit: None)
+
 ### V001  (integrity: pass, exit: ok)
 - `v001_utility_failure_reproduced`: **fail**
 - `v001_calibration_accurate`: **pass**

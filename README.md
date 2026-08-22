@@ -62,6 +62,7 @@ decision-logged version bump.
 | D002 dual verdict | calibrated mapping **PASS** vs the dense envelope (median ratio 0.21, CI [0.18, 0.23]); adaptive variable-width mechanism **FAIL** (calibrated widths collapse to [2,2,2,2]) | a metric pass does not license an adaptive-mechanism claim (§13.3) |
 | CTRI-style continuation diagnostics (support_only) | zero false-safe abstention on mixed-sign fibers; marginal regime cannot identify the sign without a bridge assumption, paired replay identifies the replay summary | formal scope + classical coupled/nonrectangular robust-advantage mapping; not a new theory (§13.4) |
 | CTRI large-scale census (support_only) | Fraction-exact sign/rank stability over 5k + 100k frozen continuation families (reversal rate ≈ 3.2%, scale-stable) | family-level diagnostics only; legacy 400/120,000 counts are background, not reproduced |
+| CTRI census server supplement | autodl2 run at N=10⁷ (48 CPU workers, 88 s, 0 GPU): sign-reversal family rate **3.2744% ± 0.006 pp**, converging across 5k → 100k → 10⁷ | supplement artifact with execution evidence in `artifacts/v0.1.2/scale_supplement/`; canonical packs remain the reproducible-from-clone evidence |
 | Minimal-logging teaching asset (support_only) | 8×3 universe eligibility enumeration (point vs sign labels), minimal schemas | classical decision-reduct / FD / hitting-set equivalence; teaching only (§13.5) |
 
 Claim ceilings: the D002 pass is a *fixed mapping efficiency* claim on a frozen
