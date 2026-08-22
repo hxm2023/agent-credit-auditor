@@ -61,6 +61,23 @@ Show: `global_k8_efficiency` PASS (median ratio 0.21) + `variable_width_adaptivi
 FAIL (widths [2,2,2,2] = global control) + headline FAIL with the narrow claim
 retained. This is the flagship: total metrics cannot mask mechanism failure.
 
+## Part 4b — optional support-only packs (30s)
+
+```bash
+uv run credit-auditor run \
+  --protocol configs/protocols/continuation_support_only_v1.json \
+  --output artifacts/local/CONT
+uv run credit-auditor run \
+  --protocol configs/protocols/minimal_logging_teaching_v1.json \
+  --output artifacts/local/ML
+cat artifacts/local/CONT/REPORT.md | head -6
+```
+
+Show the banners: CTRI-style diagnostics are SUPPORT_ONLY (classical
+partial-identification mapping, zero false-safe abstention); minimal logging
+is a teaching asset (decision-reduct / FD / hitting-set equivalence). Neither
+claims new theory.
+
 ## Part 5 — evidence discipline (30s)
 
 ```bash
