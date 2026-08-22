@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies (frozen lock)
+        run: uv sync --extra dev --frozen
+
+      - name: Validate all frozen protocols
+        run: |
+          for p in configs/protocols/*.json; do
+            uv run credit-auditor validate-protocol "$p"
+          done
+
+      - name: Smoke tests (fast, excludes full-driver pipelines)
+        run: uv run pytest -m "not full" -q
+
+      - name: Fresh-clone reproduction (M0 pack via script)
+        run: bash scripts/run_m0.sh artifacts/ci/M0
+
+      - name: Full test suite (release gate)
+        run: uv run pytest -q
+
+      - name: Guard + legacy bundle CLI smoke
+        run: |
+          echo '{"schema_version": "grpo-guard-envelope-1.0", "required_extensions": [], "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' > /tmp/env.json
+          uv run credit-auditor validate-guard-envelope --envelope /tmp/env.json

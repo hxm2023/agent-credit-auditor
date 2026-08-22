@@ -50,17 +50,25 @@ def test_oracle_input_hash_changes_with_world():
 
 
 def test_ast_import_isolation_both_oracles():
+    import ast
+    import sys
+    from types import ModuleType
+
+    stdlib = {m for m in sys.stdlib_module_names}
     for script in ("enumeration_oracle.py", "bellman_oracle.py"):
         bad = check_import_isolation(ORACLE_DIR / script)
         assert bad == [], f"{script} imports {bad}"
         tree_imports = []
-        import ast
         tree = ast.parse((ORACLE_DIR / script).read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 tree_imports.append(node.module)
-        # stdlib-only: __future__/typing allowed; nothing else (no credit_auditor)
-        assert set(tree_imports) <= {None, "typing", "__future__"}, tree_imports
+            elif isinstance(node, ast.Import):
+                tree_imports.extend(alias.name for alias in node.names)
+        # stdlib-only: no credit_auditor, no third-party (fractions/json/hashlib
+        # are stdlib; oracle scripts stay self-contained)
+        non_stdlib = [m for m in tree_imports if m and m.split(".")[0] not in stdlib]
+        assert non_stdlib == [], (script, non_stdlib)
 
 
 def test_process_import_isolation_both_oracles():

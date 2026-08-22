@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.full
+
 from credit_auditor import runner
 from credit_auditor.experiments import v001 as v001_exp
 

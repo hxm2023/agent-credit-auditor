@@ -46,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     p_report = sub.add_parser("report", help="build release report from artifact root")
     p_report.add_argument("--artifact-root", required=True, type=Path)
     p_report.add_argument("--output", type=Path, default=None)
+    p_report.add_argument("--skip-tests", action="store_true", help="skip the embedded full test-suite run for TEST_LOG.txt (fast)")
 
     args = parser.parse_args(argv)
 
@@ -114,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "report":
         from credit_auditor.report import build_release_report
-        out = build_release_report(args.artifact_root, args.output)
+        out = build_release_report(args.artifact_root, args.output, run_tests=not args.skip_tests)
         print(f"report written: {out}")
         return 0
 

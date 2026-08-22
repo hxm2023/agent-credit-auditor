@@ -36,4 +36,6 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "release_report: release-report builder tests (excluded from nested TEST_LOG runs)",
+    "full: slow pipeline tests (M0/V001/D002/CONT/ML full-driver runs); exclude with -m 'not full' for the fast smoke set",
+    "smoke: fast tests (unit + fault + protocol), the default for day-to-day development",
 ]
