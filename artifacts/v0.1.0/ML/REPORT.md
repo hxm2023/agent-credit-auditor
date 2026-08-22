@@ -3,11 +3,13 @@
 NOVELTY STATUS: CLASSICAL DECISION-REDUCT / FD / HITTING-SET EQUIVALENCE
 CLAIM STATUS: TEACHING OR TELEMETRY-SCHEMA DIAGNOSTIC ONLY (design 13.5)
 
-- point-label assignments: 256
-- point-eligible: 256  (100.0000%)
-- sign-eligible: 256  (100.0000%)
-- minimal schema sizes: [3]
-- runtime: 0.01 CPU seconds (GPU 0)
+- point-label assignments (4 values x 8 rows): 65536
+- point-eligible: 65536  (100.0000%)
+- sign-eligible: 65536  (100.0000%)
+- point minimal-schema-size distribution: {1: 36, 2: 684, 3: 64812, 0: 4}
+- sign minimal-schema-size distribution: {1: 1536, 2: 7680, 3: 55808, 0: 512}
+- default-universe minimal schemas: [(0, 1, 2)]
+- runtime: 1.90 CPU seconds (GPU 0)
 
 ## Honesty notes
 - docs_only_semantic: new frozen universe; the legacy counts

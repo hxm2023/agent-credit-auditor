@@ -74,9 +74,11 @@ def test_minimal_logging_support_only(ml_run):
 
 def test_minimal_logging_counts(ml_run):
     res = json.loads((ml_run / "result.json").read_text(encoding="utf-8"))
-    assert res["point_total"] == 256
+    assert res["point_total"] == 65536
     assert res["point_eligible"] > 0
     assert res["sign_eligible"] >= res["point_eligible"]
+    assert sum(res["point_min_sizes"].values()) == res["point_eligible"]
+    assert sum(res["sign_min_sizes"].values()) == res["sign_eligible"]
     assert res["runtime_cpu_seconds"] > 0
 
 

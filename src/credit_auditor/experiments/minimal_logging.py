@@ -1,9 +1,10 @@
 """Minimal-logging teaching driver (design §8.5, §13.5) — docs_only_semantic.
 
-Enumerates, over a FROZEN new universe (8 rows x 3 bits), how many of the
-2^8 point-label assignments admit a label-consistent logging schema, and how
-many admit one under sign-coarsened labels. The report displays the NOVELTY
-STATUS banner: the schema problem IS the classical decision-reduct /
+Over a FROZEN new universe (8 rows x 3 bits, 4-valued labels, 4^8 = 65536
+assignments) enumerates how many point-label assignments admit a
+label-consistent logging schema, how many admit one under sign-coarsened
+labels, and the minimal-schema-size distribution. The report displays the
+NOVELTY STATUS banner: the schema problem IS the classical decision-reduct /
 functional-dependency / hitting-set problem.
 
 Legacy counts (390625 / 390112 / 3.81% / 4.21%, 198.63 CPU s) are incident
@@ -27,34 +28,48 @@ from credit_auditor.worlds.minimal_logging import ALL_BITS, default_universe, mi
 ORACLE_DIR = Path(__file__).resolve().parents[1] / "oracles"
 
 ROWS = tuple((b0, b1, b2) for b0 in (0, 1) for b1 in (0, 1) for b2 in (0, 1))
+LABEL_VALUES = (0, 1, 2, 3)
+SIGN = lambda v: v % 2  # sign coarsening: even -> 0, odd -> 1
 
 
-def _assignment_eligible(labels: tuple[str, ...]) -> bool:
-    pairs = {(i, j) for i in range(8) for j in range(i + 1, 8) if labels[i] != labels[j]}
-    for size in range(0, 4):
+def _separates(pair: tuple[int, int], schema: tuple[int, ...]) -> bool:
+    i, j = pair
+    return any(ROWS[i][b] != ROWS[j][b] for b in schema)
+
+
+def _assignment_stats(labels: tuple[int, ...], sign_mode: bool) -> tuple[bool, int]:
+    """(eligible, minimal_schema_size) for one label assignment."""
+    def diff(i: int, j: int) -> bool:
+        a, b = labels[i], labels[j]
+        return (a % 2 != b % 2) if sign_mode else (a != b)
+
+    pairs = [(i, j) for i in range(8) for j in range(i + 1, 8) if diff(i, j)]
+    if not pairs:
+        return True, 0
+    for size in range(1, 4):
         for schema in itertools.combinations(ALL_BITS, size):
-            if all(any(ROWS[i][b] != ROWS[j][b] for b in schema) for (i, j) in pairs):
-                return True
-    return False
-
-
-def _sign_coarsened(labels: tuple[str, ...]) -> tuple[str, ...]:
-    values = sorted(set(labels))
-    return tuple("+" if labels[i] == values[-1] else "-" for i in range(8))
+            if all(_separates(p, schema) for p in pairs):
+                return True, size
+    return False, 3
 
 
 def run_minimal_logging(ctx: runner.RunContext) -> runner.RunResult:
     t0 = time.perf_counter()
     point_eligible = 0
     sign_eligible = 0
-    point_total = 0
-    for bits in range(1 << 8):
-        labels = tuple("L" + str((bits >> (7 - i)) & 1) for i in range(8))
-        point_total += 1
-        if _assignment_eligible(labels):
+    point_min_sizes = {1: 0, 2: 0, 3: 0}
+    sign_min_sizes = {1: 0, 2: 0, 3: 0}
+    point_total = len(LABEL_VALUES) ** 8
+    for bits in range(point_total):
+        labels = tuple((bits >> (2 * (7 - i))) & 3 for i in range(8))
+        ok_p, sz_p = _assignment_stats(labels, sign_mode=False)
+        ok_s, sz_s = _assignment_stats(labels, sign_mode=True)
+        if ok_p:
             point_eligible += 1
-        if _assignment_eligible(_sign_coarsened(labels)):
+            point_min_sizes[sz_p] = point_min_sizes.get(sz_p, 0) + 1
+        if ok_s:
             sign_eligible += 1
+            sign_min_sizes[sz_s] = sign_min_sizes.get(sz_s, 0) + 1
     elapsed = time.perf_counter() - t0
 
     ms = minimal_schemas(default_universe())
@@ -82,10 +97,12 @@ def run_minimal_logging(ctx: runner.RunContext) -> runner.RunResult:
             "NOVELTY STATUS: CLASSICAL DECISION-REDUCT / FD / HITTING-SET EQUIVALENCE",
             "CLAIM STATUS: TEACHING OR TELEMETRY-SCHEMA DIAGNOSTIC ONLY (design 13.5)",
             "",
-            f"- point-label assignments: {point_total}",
+            f"- point-label assignments (4 values x 8 rows): {point_total}",
             f"- point-eligible: {point_eligible}  ({100.0 * point_eligible / point_total:.4f}%)",
             f"- sign-eligible: {sign_eligible}  ({100.0 * sign_eligible / point_total:.4f}%)",
-            f"- minimal schema sizes: {[len(s) for s in ms]}",
+            f"- point minimal-schema-size distribution: {point_min_sizes}",
+            f"- sign minimal-schema-size distribution: {sign_min_sizes}",
+            f"- default-universe minimal schemas: {ms}",
             f"- runtime: {elapsed:.2f} CPU seconds (GPU 0)",
             "",
             "## Honesty notes",
@@ -97,11 +114,19 @@ def run_minimal_logging(ctx: runner.RunContext) -> runner.RunResult:
         ]
     )
     return runner.RunResult(
-        result={"status": "ok", "point_total": point_total, "point_eligible": point_eligible, "sign_eligible": sign_eligible, "runtime_cpu_seconds": elapsed, "minimal_schema_sizes": [len(s) for s in ms]},
+        result={
+            "status": "ok",
+            "point_total": point_total,
+            "point_eligible": point_eligible,
+            "sign_eligible": sign_eligible,
+            "point_min_sizes": point_min_sizes,
+            "sign_min_sizes": sign_min_sizes,
+            "runtime_cpu_seconds": elapsed,
+        },
         oracle_result={"oracle_ok": True},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": [{"point_total": point_total, "point_eligible": point_eligible, "sign_eligible": sign_eligible}]},
+        manifest_extra={"raw_results": [{"point_total": point_total, "point_eligible": point_eligible, "sign_eligible": sign_eligible, "point_min_sizes": point_min_sizes, "sign_min_sizes": sign_min_sizes}]},
     )
 
 
