@@ -43,6 +43,14 @@ uv run credit-auditor run \
   --protocol configs/protocols/minimal_logging_teaching_v1.json \
   --output "$ROOT/ML"
 
+echo "== CTRI large-scale census (canonical + large sample) =="
+uv run credit-auditor run \
+  --protocol configs/protocols/continuation_scale_v1.json \
+  --output "$ROOT/CSCALE"
+uv run credit-auditor run \
+  --protocol configs/protocols/continuation_scale_large_v1.json \
+  --output "$ROOT/CSCALE_LARGE"
+
 echo "== release report (runs the full test suite for TEST_LOG) =="
 uv run python -c "
 from pathlib import Path

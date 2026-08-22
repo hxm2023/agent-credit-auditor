@@ -13,11 +13,13 @@ from credit_auditor.experiments import m0 as m0_exp
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_validate_protocol_all_five(capsys):
-    for p in sorted((ROOT / "configs/protocols").glob("*.json")):
+def test_validate_protocol_all_frozen(capsys):
+    protocols = sorted((ROOT / "configs/protocols").glob("*.json"))
+    assert len(protocols) == 7
+    for p in protocols:
         assert main(["validate-protocol", str(p)]) == 0
     out = capsys.readouterr().out
-    assert out.count("mode=docs_only_semantic") == 5
+    assert out.count("mode=docs_only_semantic") == 7
 
 
 def test_guard_cli_allow(tmp_path):

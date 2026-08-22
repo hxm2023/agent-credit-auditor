@@ -61,6 +61,7 @@ decision-logged version bump.
 | V001 utility failure | calibration accurate (err ~1e-16) but fixed-budget MSE FAILS (median 26.5x vs dense) | "calibration is accurate" does not imply utility; cost accounting matters |
 | D002 dual verdict | calibrated mapping **PASS** vs the dense envelope (median ratio 0.21, CI [0.18, 0.23]); adaptive variable-width mechanism **FAIL** (calibrated widths collapse to [2,2,2,2]) | a metric pass does not license an adaptive-mechanism claim (§13.3) |
 | CTRI-style continuation diagnostics (support_only) | zero false-safe abstention on mixed-sign fibers; marginal regime cannot identify the sign without a bridge assumption, paired replay identifies the replay summary | formal scope + classical coupled/nonrectangular robust-advantage mapping; not a new theory (§13.4) |
+| CTRI large-scale census (support_only) | Fraction-exact sign/rank stability over 5k + 100k frozen continuation families (reversal rate ≈ 3.2%, scale-stable) | family-level diagnostics only; legacy 400/120,000 counts are background, not reproduced |
 | Minimal-logging teaching asset (support_only) | 8×3 universe eligibility enumeration (point vs sign labels), minimal schemas | classical decision-reduct / FD / hitting-set equivalence; teaching only (§13.5) |
 
 Claim ceilings: the D002 pass is a *fixed mapping efficiency* claim on a frozen
@@ -90,6 +91,22 @@ scripts/         run_m0.sh / run_v001.sh / run_d002.sh / reproduce_all.sh
 tests/           math units, oracle independence, protocol/evidence, fault injection
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
+
+## v0.1.2 additions
+
+- **Fraction-exact cross-validation**: M0's frozen problems are verified with
+  exact `fractions.Fraction` arithmetic — the primary and BOTH oracles align
+  with **mismatch == 0** (no float rounding in the enumeration; §10.3).
+- **CTRI large-scale census**: Fraction-exact sign/rank stability census over
+  frozen continuation families (canonical N=5,000 + large-sample N=100,000);
+  sign-reversal rate ≈ 3.2%, stable across scales. Server-scale N≥10⁷ via
+  `scripts/run_on_autodl2.sh` (CPU-only, user-executed).
+- **legacy_exact readiness**: `validate-legacy-bundle` checks the §13.6 bundle
+  structure, content hashes, and the out-of-band root anchor; mode gating
+  fails closed (legacy_exact only with a protocol flag AND an anchored bundle).
+- **Dev experience**: `scripts/run_smoke.sh` (fast set, ~85 s), `report
+  --skip-tests`, and a GitHub Actions CI (sync → validate → smoke →
+  fresh-clone M0 → full suite → guard CLI).
 
 ## v0.1.1 additions
 
