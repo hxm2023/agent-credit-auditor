@@ -93,6 +93,25 @@ tests/           math units, oracle independence, protocol/evidence, fault injec
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
 
+## v0.1.4 additions
+
+- **Self-audit (audit of the auditor)**: every fault type A1-A14 injected
+  into frozen random instances (N=200/type) with TPR/FPR characterization
+  (Wilson CIs) — all 13 fault types TPR=1.000, FPR=0.000. The self-audit
+  itself caught and fixed 3 control-group bugs during development.
+- **Mechanism theory**: [`docs/mechanism_theory.md`](docs/mechanism_theory.md)
+  — closed-form derivations (paired-replay variance → why the win is
+  structural; the K-sample prefix floor → why the historical 0.694 is not
+  reconstructable; the HH 1/q amplification) each verified == 0 diff against
+  exact enumeration; MECH001 now carries a pre-registered statistical test.
+- **Real-scenario fault injection**:
+  [`docs/online_offline_fault_map.md`](docs/online_offline_fault_map.md)
+  maps GRPO-Guard online faults → offline-detectable signals → Auditor
+  gates; `scripts/run_real_scenario_demo.sh` injects Guard fault patterns
+  into the Auditor's own artifacts (split leakage refused, artifact mutation
+  hash-failed, event-reorder manifest flagged) — answering "has this project
+  really been used?" with concrete detectors firing.
+
 ## v0.1.3 additions
 
 - **GRPO-Guard real-trajectory integration (§25 bridge)**: REAL Guard-issued

@@ -32,6 +32,7 @@ def test_frozen_protocol_hashes_are_stable():
     hashes = {f.name: sha256_json(runner.validate_protocol(f).model_dump(mode="json")) for f in sorted(PROTOCOLS.glob("*.json"))}
     assert hashes == {
         "continuation_scale_large_v1.json": "b236f66a13c35badad435b8ce71a42f8dcad3ffb453a956666152eb72d1bf8eb",
+        "self_audit_v1.json": "f2363d115a8e2d3a455dc255eef7055e1dcbe08b3cbe4438c4be6914f70022b7",
         "continuation_scale_v1.json": "fdbd3ad5f73e61df0ee991e2bc4dfe5106f30ad9ba5f4b6379ab83aed433a311",
         "continuation_support_only_v1.json": "23653680fac8c401e8d077fbd2663357f861aeb2b8ab58ebb88b33a064d68254",
         "d002_regression_v1.json": "7d138af0016c7e1a76ca83416fb0106f2106a1475001cbd18a03932af95a1d1e",

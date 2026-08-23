@@ -15,11 +15,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_validate_protocol_all_frozen(capsys):
     protocols = sorted((ROOT / "configs/protocols").glob("*.json"))
-    assert len(protocols) == 7
+    assert len(protocols) == 8
     for p in protocols:
         assert main(["validate-protocol", str(p)]) == 0
     out = capsys.readouterr().out
-    assert out.count("mode=docs_only_semantic") == 7
+    assert out.count("mode=docs_only_semantic") == 8
 
 
 def test_guard_cli_allow(tmp_path):
