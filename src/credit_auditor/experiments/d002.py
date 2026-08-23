@@ -138,7 +138,12 @@ def _calibration(ctx: runner.RunContext) -> runner.RunResult:
     for combo in itertools.product(range(7), repeat=4):
         obj = sum(o[combo][0] for o in cal_objectives) / len(cal_objectives)
         cost = sum(o[combo][1] for o in cal_objectives) / len(cal_objectives)
-        if best_obj is None or best_cost is None or obj < best_obj - 1e-15 or (abs(obj - best_obj) <= 1e-15 and cost < best_cost):
+        if (
+            best_obj is None
+            or best_cost is None
+            or obj < best_obj - 1e-15
+            or (abs(obj - best_obj) <= 1e-15 and cost < best_cost)
+        ):
             best_obj, best_cost, best_combo = obj, cost, combo
 
     mapping = _build_mapping(best_combo, depths)

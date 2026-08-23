@@ -1,6 +1,7 @@
 """Coverage + correctness for the non-focal D002 paths (ksample moments,
 branching bucket moments, RLOO envelope) that the D002 pipeline tests do not
 exercise (they use the focal world only)."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,7 +27,6 @@ def test_ksample_moments_unbiased_on_stochastic_world():
 
 def test_branching_bucket_moments_deep_width():
     p = generate_problem("cov_b", 424243)
-    target = true_gradient(p)
     b = p.buckets[0]
     for width in (2, 4, 8):
         m = branching.branching_bucket_moments(p, b, d=2, width=width)
@@ -55,7 +55,11 @@ def test_bernoulli_root_rloo_n2_exact():
     m = exact_moments(dist, target)
     assert m.max_abs_bias() < 1e-12
     assert m.var_trace > 0
-    assert m.var_trace < 1.5 * exact_moments(
-        [WeightedVector(p, tuple(world.rewards[a] * s for s in world.score(a))) for a, p in world.all_paths()],
-        target,
-    ).var_trace
+    assert (
+        m.var_trace
+        < 1.5
+        * exact_moments(
+            [WeightedVector(p, tuple(world.rewards[a] * s for s in world.score(a))) for a, p in world.all_paths()],
+            target,
+        ).var_trace
+    )
