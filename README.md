@@ -93,27 +93,44 @@ tests/           math units, oracle independence, protocol/evidence, fault injec
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
 
-## v0.2-prep additions — real-trajectory bridge, Stage 1
+## v0.2-prep additions — real-trajectory bridge, Stages 1-2
 
 The external review direction: the Auditor must audit the data the optimizer
-actually consumes, not just manifests. New trajectory-level tooling
-(`audit/trajectory_audit.py` + `adapters/trajectory_bundle.py` + CLI
-`audit-trajectories`):
+actually consumes, not just manifests.
 
-- **Optimizer-consumed data audit**: rollout trajectory records (tokens +
-  action mask + old logprobs + rewards) are checked for the Guard online
-  faults that are offline-detectable at record level — mask_shift →
-  T005, misbound_logprob → S002, retokenization → T005, stale/mixed
-  policy_version → T004, and estimator-vs-optimizer mask drift → T005.
-  `scripts/run_trajectory_demo.sh` injects all six fault types into the
-  frozen fixture records; every detector fires, clean baseline stays clean.
-- **Hash-anchored trajectory bundles**: record files are referenced by sha256
-  only under a pinned schema (`aca-trajectory-bundle-1.0`); validation fails
-  closed on unknown schema, missing hashes, or mutation.
-- Honest boundary: the record format is the Auditor's own frozen fixture spec;
-  real Guard trajectories keep flowing through the envelope adapter (pinned to
-  the Guard schema) until Guard publishes its trajectory schema package
-  (§20.2 gate).
+**Stage 1 — trajectory-level audit** (`audit/trajectory_audit.py` +
+`adapters/trajectory_bundle.py` + CLI `audit-trajectories`):
+
+- Rollout trajectory records (tokens + action mask + old logprobs + rewards)
+  are checked for the Guard online faults that are offline-detectable at
+  record level — mask_shift → T005, misbound_logprob → S002,
+  retokenization → T005, stale/mixed policy_version → T004, and
+  estimator-vs-optimizer mask drift → T005. `scripts/run_trajectory_demo.sh`
+  injects all six fault types into frozen fixture records; every detector
+  fires, clean baseline stays clean.
+- Hash-anchored trajectory bundles: sha256-only refs under a pinned schema
+  (`aca-trajectory-bundle-1.0`), fail-closed on mutation.
+
+**Stage 2 — exact-to-real evidence bridge** (`worlds/tool_agent.py` +
+`estimators/bridge_estimators.py` + `oracles/mc_reference.py` +
+`experiments/evidence_bridge.py`, `docs/evidence_bridge.md`):
+
+- Controllable tool-agent tasks (observation-dependent tool-use MDP, two
+  frozen H=4 tasks + two H=12 twins).
+- The SAME estimators as the exact worlds (dense / local sibling /
+  paired-replay / pc-rsg) run on both layers: exact enumeration (bias,
+  intrinsic cycle variance) and trajectory-record consumption under matched
+  transition budgets.
+- **Result**: the exact-layer predictor var·cost/B + bias² reproduces the
+  sampled fixed-budget MSE with ratios 0.87–1.07 on all estimator-task pairs;
+  the exact layer flags that the designed-world unbiasedness of
+  paired-replay/pc-rsg does NOT transfer to observation-dependent worlds
+  (the coupled contrast misses the indirect effect of a_t through future
+  observations/actions). `scripts/run_evidence_bridge.sh` reproduces it.
+- Honest boundary: the record format is the Auditor's own frozen fixture
+  spec; estimators consume records only, so real LLM trajectories drop in
+  unchanged (Stage 3 harness, gated on the Guard trajectory schema package,
+  §20.2 gate). No claim about real LLM agent performance.
 
 ## v0.1.4 additions
 

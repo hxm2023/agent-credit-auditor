@@ -1,0 +1,235 @@
+{
+  "status": "ok",
+  "tasks": [
+    {
+      "task": "tool_selection",
+      "horizon": 4,
+      "exact_target": 0.6645099374999998,
+      "mc_target": 0.674524250000421,
+      "mc_se": 0.008412492344615498,
+      "mc_agreement_gate": "PASS",
+      "mc_rel_diff": 0.015070222332711599,
+      "spearman_exact_to_sampled": 0.19999999999999996,
+      "rows": [
+        {
+          "estimator": "dense",
+          "exact_mean": 0.6645099374999999,
+          "exact_bias": 1.1102230246251565e-16,
+          "exact_var": 14.190606174838749,
+          "cost": 4.0,
+          "predictor": 56.762424699354995,
+          "predicted_mse": 0.0028381212349677496,
+          "unbiased_verdict": true,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.018613762499995024,
+          "sampled_mse": 0.0030408203505040117,
+          "sampled_batch_mean": 0.6716612000000083,
+          "sampled_bias2": 5.11405553440282e-05,
+          "prediction_ratio": 1.0714201750928958
+        },
+        {
+          "estimator": "local_sibling",
+          "exact_mean": 0.26149500000000003,
+          "exact_bias": 0.4030149374999997,
+          "exact_var": 0.5487053649750001,
+          "cost": 7.0,
+          "predictor": 4.00335859467313,
+          "predicted_mse": 0.16261308672586994,
+          "unbiased_verdict": false,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.002206750000000257,
+          "sampled_mse": 0.16310503312922572,
+          "sampled_batch_mean": 0.26090873293664685,
+          "sampled_bias2": 0.16289393232498944,
+          "prediction_ratio": 1.0030252571503369
+        },
+        {
+          "estimator": "paired_replay",
+          "exact_mean": 0.7457580000000001,
+          "exact_bias": 0.08124806250000038,
+          "exact_var": 1.4909703264360001,
+          "cost": 18.0,
+          "predictor": 26.844067123508008,
+          "predicted_mse": 0.007943120953796368,
+          "unbiased_verdict": false,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 8.024999999989291e-05,
+          "sampled_mse": 0.006902811967602072,
+          "sampled_batch_mean": 0.7386206120612061,
+          "sampled_bias2": 0.005492392083917038,
+          "prediction_ratio": 0.8690301970414933
+        },
+        {
+          "estimator": "pc_rsg",
+          "exact_mean": 0.04428000000000014,
+          "exact_bias": 0.6202299374999997,
+          "exact_var": 44.93348496472501,
+          "cost": 7.5,
+          "predictor": 337.3858224108088,
+          "predicted_mse": 0.40153523223302534,
+          "unbiased_verdict": false,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.017552899999994785,
+          "sampled_mse": 0.4071521904048402,
+          "sampled_batch_mean": 0.044212865716429114,
+          "sampled_bias2": 0.3847684572632722,
+          "prediction_ratio": 1.0139887056500065
+        }
+      ]
+    },
+    {
+      "task": "evidence_chain",
+      "horizon": 4,
+      "exact_target": 0.32679599999999936,
+      "mc_target": 0.3392821000002871,
+      "mc_se": 0.007047429997742813,
+      "mc_agreement_gate": "PASS",
+      "mc_rel_diff": 0.0382076280012232,
+      "spearman_exact_to_sampled": 0.3999999999999999,
+      "rows": [
+        {
+          "estimator": "dense",
+          "exact_mean": 0.32679599999999964,
+          "exact_bias": 2.7755575615628914e-16,
+          "exact_var": 9.963629340864001,
+          "cost": 4.0,
+          "predictor": 39.854517363456004,
+          "predicted_mse": 0.0019927258681728,
+          "unbiased_verdict": true,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.01456519999978384,
+          "sampled_mse": 0.001961010143199764,
+          "sampled_batch_mean": 0.3361307999999863,
+          "sampled_bias2": 8.713849103975601e-05,
+          "prediction_ratio": 0.984084250884886
+        },
+        {
+          "estimator": "local_sibling",
+          "exact_mean": 0.09221592787500002,
+          "exact_bias": 0.23458007212499934,
+          "exact_var": 0.03312673741490281,
+          "cost": 7.0,
+          "predictor": 0.28691497214248957,
+          "predicted_mse": 0.055039404596265114,
+          "unbiased_verdict": false,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.0003407278749690268,
+          "sampled_mse": 0.05523983802561039,
+          "sampled_batch_mean": 0.09179095204760333,
+          "sampled_bias2": 0.05522737256310795,
+          "prediction_ratio": 1.003641635130604
+        },
+        {
+          "estimator": "paired_replay",
+          "exact_mean": 0.34545452100000007,
+          "exact_bias": 0.018658521000000705,
+          "exact_var": 0.25004564590541056,
+          "cost": 18.0,
+          "predictor": 4.501169766703297,
+          "predicted_mse": 0.0005731814872223368,
+          "unbiased_verdict": false,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.0004383790002007726,
+          "sampled_mse": 0.0005044246877941984,
+          "sampled_batch_mean": 0.3442097209720987,
+          "sampled_bias2": 0.0003032376780941314,
+          "prediction_ratio": 0.880043579632453
+        },
+        {
+          "estimator": "pc_rsg",
+          "exact_mean": 0.010001879999999862,
+          "exact_bias": 0.3167941199999995,
+          "exact_var": 24.749415918396462,
+          "cost": 7.5,
+          "predictor": 185.72097790244004,
+          "predicted_mse": 0.10963954543597276,
+          "unbiased_verdict": false,
+          "cycle_agreement": true,
+          "cycle_abs_diff": 0.014103680000000136,
+          "sampled_mse": 0.10107043865995113,
+          "sampled_batch_mean": 0.02668210802700682,
+          "sampled_bias2": 0.09006834815517703,
+          "prediction_ratio": 0.9218429195237241
+        }
+      ]
+    },
+    {
+      "task": "tool_selection_large",
+      "horizon": 12,
+      "exact_target": null,
+      "mc_target": 1.0201237500000129,
+      "mc_se": 0.013693915337223878,
+      "mc_agreement_gate": "MC_ONLY",
+      "spearman_exact_to_sampled": null,
+      "rows": [
+        {
+          "estimator": "dense",
+          "cost": 12.0,
+          "sampled_mse": 0.045865853022323315,
+          "sampled_batch_mean": 1.0620961884753854,
+          "sampled_bias2": 0.0017616855915689362
+        },
+        {
+          "estimator": "local_sibling",
+          "cost": 23.0,
+          "sampled_mse": 0.8756023142577762,
+          "sampled_batch_mean": 0.08440304948216341,
+          "sampled_bias2": 0.875573229377615
+        },
+        {
+          "estimator": "paired_replay",
+          "cost": 102.0,
+          "sampled_mse": 0.011435404524772845,
+          "sampled_batch_mean": 1.1221779336734694,
+          "sampled_bias2": 0.010415056405255602
+        },
+        {
+          "estimator": "pc_rsg",
+          "cost": 19.5,
+          "sampled_mse": 1.4611267307545681,
+          "sampled_batch_mean": 0.17678487804877965,
+          "sampled_bias2": 0.7112204529439786
+        }
+      ]
+    },
+    {
+      "task": "evidence_chain_large",
+      "horizon": 12,
+      "exact_target": null,
+      "mc_target": 0.8185821499987858,
+      "mc_se": 0.012155540171951393,
+      "mc_agreement_gate": "MC_ONLY",
+      "spearman_exact_to_sampled": null,
+      "rows": [
+        {
+          "estimator": "dense",
+          "cost": 12.0,
+          "sampled_mse": 0.025541213227399086,
+          "sampled_batch_mean": 0.8420972388955532,
+          "sampled_bias2": 0.0005529594058228761
+        },
+        {
+          "estimator": "local_sibling",
+          "cost": 23.0,
+          "sampled_mse": 0.5416084397874009,
+          "sampled_batch_mean": 0.08265822784810127,
+          "sampled_bias2": 0.5415840191936467
+        },
+        {
+          "estimator": "paired_replay",
+          "cost": 102.0,
+          "sampled_mse": 0.006159874662905122,
+          "sampled_batch_mean": 0.8923188775510208,
+          "sampled_bias2": 0.005437104990112538
+        },
+        {
+          "estimator": "pc_rsg",
+          "cost": 19.5,
+          "sampled_mse": 1.0402589955225046,
+          "sampled_batch_mean": 0.21101268292682898,
+          "sampled_bias2": 0.3691406573181016
+        }
+      ]
+    }
+  ]
+}
