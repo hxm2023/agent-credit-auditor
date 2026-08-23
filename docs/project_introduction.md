@@ -132,7 +132,9 @@ artifacts/         规范运行输出（result/manifest/report，no-overwrite + 
 - **190 个 CPU 测试**（smoke ~85s 快速层；完整套件为发布门禁），覆盖率 94.5%
 - **GitHub CI 双 job 全绿**：quality（ruff/format/pyright/依赖审计）+
   test（协议校验 → smoke → fresh-clone M0 复现 → 完整套件 + 覆盖率门禁）
-- **GitHub Release v0.1.5 + tag**；`uv build` sdist/wheel 已验证
+- **GitHub Release v0.1.6 + tag**（v0.1.6 为外部评审 P0 修复版：LF SHA256SUMS
+  证据链、严格 provenance、CI release gate、干净树重新生成全部九包）；`uv build`
+  sdist/wheel 已验证
 - **Dockerfile**（CPU-only 发布镜像）、`.python-version`、`SECURITY.md`
 - **一键复现**：`bash scripts/reproduce_all.sh artifacts/v0.1.x` 从干净克隆
   重建全部实验包与发布报告（fresh-clone 验证通过）
