@@ -24,6 +24,9 @@ REQUIRED_PACKAGE_FILES = [
 ]
 
 
+MANIFEST_REQUIRED_FIELDS = ["protocol_id", "utc_start", "source_commit", "dirty", "python", "platform", "argv"]
+
+
 def audit_artifact_dir(artifact_dir: Path) -> dict:
     errors: list[str] = []
     for name in REQUIRED_PACKAGE_FILES:
@@ -43,6 +46,19 @@ def audit_artifact_dir(artifact_dir: Path) -> dict:
             actual = sha256_file(p)
             if actual != expected:
                 errors.append(f"hash mismatch: {rel}")
+
+    # §18 manifest completeness: a run manifest missing its required fields
+    # (e.g. an event-reordered or hand-assembled package) is flagged.
+    manifest_path = artifact_dir / "run_manifest.json"
+    if manifest_path.is_file():
+        import json as _json
+        try:
+            man = _json.loads(manifest_path.read_text(encoding="utf-8"))
+            missing = [f for f in MANIFEST_REQUIRED_FIELDS if f not in man]
+            if missing:
+                errors.append(f"run_manifest missing required fields: {missing}")
+        except Exception:
+            errors.append("run_manifest.json is not valid JSON")
 
     integrity = "pass" if not errors else "fail"
     return {"integrity": integrity, "errors": errors, "artifact_dir": str(artifact_dir)}

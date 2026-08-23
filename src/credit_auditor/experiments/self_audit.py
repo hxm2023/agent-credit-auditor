@@ -179,12 +179,16 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
             (d / "REPORT.md").write_text("# only report\n", encoding="utf-8")
             audit = audit_artifact_dir(d)
             out.append((True, {"detected": audit["integrity"] == "fail", "status": audit["integrity"], "codes": []}))
-            # control: a COMPLETE package (all required files; SHA256SUMS lists
-            # nothing -> no entries to verify -> integrity pass)
+            # control: a COMPLETE package (all required files, a complete
+            # manifest, empty SHA256SUMS -> no entries to verify -> pass)
             d2 = Path("/tmp/exp_ok_%d" % seed)
             d2.mkdir(exist_ok=True)
-            for name in ("protocol.json", "result.json", "oracle_result.json", "gate_decision.json", "run_manifest.json", "raw_rows.jsonl.zst", "REPORT.md"):
+            for name in ("protocol.json", "result.json", "oracle_result.json", "gate_decision.json", "raw_rows.jsonl.zst", "REPORT.md"):
                 (d2 / name).write_text("{}", encoding="utf-8")
+            (d2 / "run_manifest.json").write_text(
+                json.dumps({"protocol_id": "x", "utc_start": "2026-08-23", "source_commit": "a" * 40, "dirty": False, "python": "3.12", "platform": "test", "argv": []}),
+                encoding="utf-8",
+            )
             (d2 / "SHA256SUMS").write_text("", encoding="utf-8")
             audit2 = audit_artifact_dir(d2)
             out.append((False, {"detected": audit2["integrity"] == "fail", "status": audit2["integrity"], "codes": []}))
