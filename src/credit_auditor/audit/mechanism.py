@@ -33,6 +33,51 @@ def width_diversity_gate(selected_widths: list[int], global_control_width: int |
     return GateResult(gate="mechanism", status="pass")
 
 
+def collapse_statistical_evidence(
+    selected_widths: list[int],
+    null_widths: list[int],
+    alpha: float = 0.05,
+) -> dict:
+    """Statistical formalization of the mechanism collapse (design §11.5).
+
+    Null hypothesis: the selected widths are drawn at random from the
+    candidate width distribution (null_widths, e.g. the 2401-mapping space's
+    width multiset). Under the null, the Shannon diversity H of the selected
+    widths is compared to the null distribution of H over random draws of the
+    same size: if the observed H sits at or below the alpha quantile, the
+    collapse is statistically significant (the selection is indistinguishable
+    from a fixed-width choice, or worse).
+
+    Returns {"diversity": H, "null_mean": ..., "null_alpha_quantile": ...,
+             "p_value": ..., "statistically_collapsed": bool}.
+    """
+    import random
+
+    import numpy as np
+
+    def diversity(ws: list[int]) -> float:
+        counts = np.bincount(ws)
+        probs = counts[counts > 0] / len(ws)
+        return float(-np.sum(probs * np.log(probs))) if len(probs) > 1 else 0.0
+
+    k = len(selected_widths)
+    rng = random.Random(20260823)  # frozen: the null distribution is reproducible
+    null_diversities = []
+    for _ in range(10000):
+        draw = [rng.choice(null_widths) for _ in range(k)]
+        null_diversities.append(diversity(draw))
+    null_diversities = np.asarray(null_diversities)
+    observed = diversity(selected_widths)
+    p_value = float(np.mean(null_diversities <= observed))
+    return {
+        "diversity": observed,
+        "null_mean": float(np.mean(null_diversities)),
+        "null_alpha_quantile": float(np.quantile(null_diversities, alpha)),
+        "p_value": p_value,
+        "statistically_collapsed": p_value <= alpha,
+    }
+
+
 def root_vs_leaf_materiality_gate(root_effect: float, leaf_effect: float, tolerance: float = 1e-9) -> GateResult:
     """MECH002: a claimed root-aggregation mechanism must differ materially
     from the flat leaf result."""
