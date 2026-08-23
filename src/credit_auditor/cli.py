@@ -41,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     p_audit = sub.add_parser("audit", help="audit an artifact directory")
     p_audit.add_argument("--artifact-dir", required=True, type=Path)
 
+    p_traj = sub.add_parser("audit-trajectories", help="audit trajectory record files (optimizer-consumed data)")
+    p_traj.add_argument("--data-dir", required=True, type=Path)
+
     p_guard = sub.add_parser(
         "validate-guard-envelope", help="fail-closed validation of a GRPO-Guard envelope (design 25)"
     )
@@ -102,6 +105,19 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  - {e}")
         # §12: INVALID evidence means the experiment cannot support claims
         return 1 if decision["integrity"] != "pass" else 0
+
+    if args.command == "audit-trajectories":
+        from credit_auditor.audit.trajectory_audit import audit_trajectory_dir, render_report
+
+        audit = audit_trajectory_dir(args.data_dir)
+        report = render_report(audit)
+        out = Path(args.data_dir) / "trajectory_audit_report.md"
+        out.write_text(report, encoding="utf-8", newline="\n")
+        print(f"records={audit['records']} findings={len(audit['findings'])} consistent={audit['consistent']}")
+        if not audit["consistent"]:
+            print("trajectory consistency FAULT detected (see report)")
+        print(f"report written: {out}")
+        return 0 if audit["consistent"] else 1
 
     if args.command == "validate-guard-envelope":
         import json as _json

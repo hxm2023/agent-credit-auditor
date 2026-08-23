@@ -93,6 +93,28 @@ tests/           math units, oracle independence, protocol/evidence, fault injec
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
 
+## v0.2-prep additions — real-trajectory bridge, Stage 1
+
+The external review direction: the Auditor must audit the data the optimizer
+actually consumes, not just manifests. New trajectory-level tooling
+(`audit/trajectory_audit.py` + `adapters/trajectory_bundle.py` + CLI
+`audit-trajectories`):
+
+- **Optimizer-consumed data audit**: rollout trajectory records (tokens +
+  action mask + old logprobs + rewards) are checked for the Guard online
+  faults that are offline-detectable at record level — mask_shift →
+  T005, misbound_logprob → S002, retokenization → T005, stale/mixed
+  policy_version → T004, and estimator-vs-optimizer mask drift → T005.
+  `scripts/run_trajectory_demo.sh` injects all six fault types into the
+  frozen fixture records; every detector fires, clean baseline stays clean.
+- **Hash-anchored trajectory bundles**: record files are referenced by sha256
+  only under a pinned schema (`aca-trajectory-bundle-1.0`); validation fails
+  closed on unknown schema, missing hashes, or mutation.
+- Honest boundary: the record format is the Auditor's own frozen fixture spec;
+  real Guard trajectories keep flowing through the envelope adapter (pinned to
+  the Guard schema) until Guard publishes its trajectory schema package
+  (§20.2 gate).
+
 ## v0.1.4 additions
 
 - **Self-audit (audit of the auditor)**: every fault type A1-A14 injected

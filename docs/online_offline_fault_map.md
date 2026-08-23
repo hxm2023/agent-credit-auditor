@@ -21,7 +21,32 @@ fault-to-detector correspondence.
 
 The Auditor's own release pipeline implements the offline half: `check_split_disjoint` (f5), the provenance audit's SHA256SUMS verification (f8), the no-overwrite discipline (f8-adjacent), the selection self-hash check (f8/lineage), and the envelope bundle validation (§25, f1-adjacent). The real-scenario demo (`scripts/run_real_scenario_demo.sh`) injects these Guard fault patterns into the Auditor's own artifacts and shows the detection firing.
 
+## Trajectory-level signals (v0.2-prep, Stage 1 of the real-trajectory bridge)
+
+The four f1-family faults are ALSO offline-detectable at the TRAJECTORY level —
+the rollout records an optimizer step actually consumes (tokens + action mask +
+old logprobs + rewards). `src/credit_auditor/audit/trajectory_audit.py` checks
+per-record consistency and the estimator-consumption agreement; the demo
+(`scripts/run_trajectory_demo.sh`) injects each fault into the frozen fixture
+records and shows the detector firing.
+
+| Trajectory signal | Offline check | Auditor reason code |
+|---|---|---|
+| mask_shift | `action_mask` length != generated tokens; mask values not in {0,1} | `T005_CLIPPING_SCOPE_MISMATCH` |
+| misbound_logprob | `old_logprobs` missing / length mismatch / NaN / Inf / positive | `S002_Q_NOT_LOGGED` |
+| retokenization | token span inconsistent with the record (length/identity breaks) | `T005_CLIPPING_SCOPE_MISMATCH` |
+| stale_policy | `policy_version` missing, or two versions mixed inside one batch | `T004_CONTINUATION_TARGET_MISMATCH` |
+| silent_mask_drift | estimator-applied mask != `optimizer_consumed_mask` | `T005_CLIPPING_SCOPE_MISMATCH` |
+| unparseable / missing fields | record JSON/fields broken | `P001_EVIDENCE_INCOMPLETE` |
+
+The trajectory records are anchored hash-only via
+`src/credit_auditor/adapters/trajectory_bundle.py` (pinned schema
+`aca-trajectory-bundle-1.0`, fail-closed on unknown schema/missing hash/mutation).
+
 Honesty notes: the mapping is a design correspondence (both projects' reason
-codes were written against the same failure taxonomy); the demo runs the
-offline detectors on Auditor artifacts with injected Guard fault patterns,
-not on live Guard production data.
+codes were written against the same failure taxonomy); the demos run the
+offline detectors on Auditor-owned fixtures with injected Guard fault patterns,
+not on live Guard production data. The trajectory record format is the
+Auditor's own spec for frozen fixtures; real Guard trajectories flow through
+the envelope adapter (pinned to the Guard schema, §25) until Guard publishes
+its trajectory schema package (§20.2 gate).

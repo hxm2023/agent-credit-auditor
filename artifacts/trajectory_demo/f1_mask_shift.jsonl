@@ -1,0 +1,4 @@
+{"trajectory_id": "traj_000", "policy_version": "v1", "generated_tokens": [101, 202, 303], "action_mask": [1, 1], "old_logprobs": [-0.31, -0.52, -0.44], "rewards": {"final": 1.0}, "termination_reason": "done"}
+{"trajectory_id": "traj_001", "policy_version": "v1", "generated_tokens": [111, 222, 333, 444], "action_mask": [1, 1, 0, 0], "old_logprobs": [-0.11, -0.23, -0.36, -0.48], "rewards": {"final": 0.0}, "termination_reason": "max_len"}
+{"trajectory_id": "traj_002", "policy_version": "v1", "generated_tokens": [55, 66], "action_mask": [1, 1], "old_logprobs": [-0.07, -0.09], "rewards": {"final": -1.0}, "termination_reason": "tool_call"}
+{"trajectory_id": "traj_003", "policy_version": "v1", "generated_tokens": [1, 2, 3, 4, 5], "action_mask": [1, 1, 1, 1, 0], "old_logprobs": [-0.5, -0.5, -0.5, -0.5, -0.5], "rewards": {"final": 0.5}}
