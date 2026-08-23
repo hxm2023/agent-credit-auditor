@@ -1,0 +1,22 @@
+{
+  "families": 10000000,
+  "counts": {
+    "sign_reversal": 327440,
+    "rank_reversal": 327440,
+    "mixed_q1": 0,
+    "mixed_q0": 0,
+    "abstain": 0
+  },
+  "rates": {
+    "sign_reversal": 0.032744,
+    "rank_reversal": 0.032744,
+    "mixed_q1": 0.0,
+    "mixed_q0": 0.0,
+    "abstain": 0.0
+  },
+  "elapsed_s": 88.37111278623343,
+  "host": "autodl2",
+  "workers": 48,
+  "seed_prefix": "ACA-SEM-CTRISCALE",
+  "arithmetic": "exact_fraction"
+}
