@@ -1,0 +1,6 @@
+# Artifacts are content-hashed byte-for-byte (SHA256SUMS). Force LF line
+# endings on every text file so a checkout on any platform reproduces the
+# exact bytes that were hashed (the v0.1.5 cross-platform checksum failure
+# root cause: CRLF on Windows was normalized to LF by git, breaking the
+# recorded hashes on Linux checkouts).
+* text=auto eol=lf

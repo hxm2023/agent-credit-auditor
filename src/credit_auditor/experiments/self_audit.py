@@ -230,17 +230,18 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
             audit = audit_artifact_dir(d)
             out.append((True, {"detected": audit["integrity"] == "fail", "status": audit["integrity"], "codes": []}))
             # control: a COMPLETE package (all required files, a complete
-            # manifest, empty SHA256SUMS -> no entries to verify -> pass)
+            # manifest, and a REAL SHA256SUMS covering every file) -> pass
             d2 = Path("/tmp/exp_ok_%d" % seed)
             d2.mkdir(exist_ok=True)
-            for name in (
+            names = (
                 "protocol.json",
                 "result.json",
                 "oracle_result.json",
                 "gate_decision.json",
                 "raw_rows.jsonl.zst",
                 "REPORT.md",
-            ):
+            )
+            for name in names:
                 (d2 / name).write_text("{}", encoding="utf-8")
             (d2 / "run_manifest.json").write_text(
                 json.dumps(
@@ -256,7 +257,12 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
                 ),
                 encoding="utf-8",
             )
-            (d2 / "SHA256SUMS").write_text("", encoding="utf-8")
+            from credit_auditor.canonical import sha256_file as _sf
+
+            sums_lines = []
+            for name in list(names) + ["run_manifest.json"]:
+                sums_lines.append(f"{_sf(d2 / name)}  {name}")
+            (d2 / "SHA256SUMS").write_text("\n".join(sums_lines) + "\n", encoding="utf-8")
             audit2 = audit_artifact_dir(d2)
             out.append((False, {"detected": audit2["integrity"] == "fail", "status": audit2["integrity"], "codes": []}))
 
@@ -340,13 +346,21 @@ def run_self_audit(ctx: runner.RunContext) -> runner.RunResult:
     claims = [
         ClaimDecision(
             claim_id="self_audit_tpr_fpr",
-            claim_text=f"the Auditor detects every injected fault (TPR=1.0) with zero false positives (FPR=0.0) across {len(fault_ids)} fault types on frozen random instances",
+            claim_text=(
+                f"Predefined Fault Mutation Regression Suite: all {len(fault_ids)} frozen fault "
+                f"templates trigger their expected reason code (regression TPR=1.0) with zero "
+                f"no-fault control false positives (FPR=0.0) on frozen random instances"
+            ),
             status=ClaimStatus.PASS if (all_tpr_1 and all_fpr_0) else ClaimStatus.FAIL,
             required_gates=["integrity"],
             reason_codes=[ReasonCode.P001_EVIDENCE_INCOMPLETE] if underperforming else [],
             claim_ceiling={
-                "allowed": ["detection-rate characterization on frozen random instances"],
-                "forbidden": ["LLM-agent utility", "fault detection on uncharacterized instances"],
+                "allowed": ["predefined fault-mutation regression detection on frozen templates"],
+                "forbidden": [
+                    "LLM-agent utility",
+                    "general TPR/FPR for unknown real faults (co-constructed templates)",
+                    "fault detection on uncharacterized instances",
+                ],
             },
         )
     ]
@@ -359,25 +373,29 @@ def run_self_audit(ctx: runner.RunContext) -> runner.RunResult:
     )
     report = "\n".join(
         [
-            "# Self-audit: Auditor's fault matrix characterized (design 14)",
+            "# Predefined Fault Mutation Regression Suite (design 14)",
             "",
-            f"- instances per fault type: {n_default} (heavy types: {n_by_fault['A7_SPLIT_OVERLAP']})",
+            f"- instances per fault type: {n_default} (runner-based types: {n_by_fault['A7_SPLIT_OVERLAP']})",
             f"- elapsed: {elapsed:.1f}s",
             "",
-            "| fault | n | TPR | TPR CI | FPR |",
+            "| fault template | n | regression TPR | TPR CI | control FPR |",
             "|---|---:|---:|---:|---:|",
         ]
         + [f"| {r['fault']} | {r['n_fault']} | {r['tpr']:.3f} | {r['tpr_ci']} | {r['fpr']:.3f} |" for r in rows]
         + [
             "",
             "## Verdict",
-            f"- all TPR == 1.0: {all_tpr_1}",
-            f"- all FPR == 0.0: {all_fpr_0}",
-            f"- underperforming types: {underperforming or 'none'}",
+            f"- all templates trigger their expected reason code: {all_tpr_1}",
+            f"- no-fault controls clean (FPR == 0.0): {all_fpr_0}",
+            f"- underperforming templates: {underperforming or 'none'}",
             "",
-            "## Honesty notes",
-            "- The fault patterns mirror the failures the Auditor was built to catch (legacy route failures and GRPO-Guard online faults), run at scale on frozen random instances.",
-            "- A TPR < 1.0 would be a real Auditor bug and would be fixed, not reported away.",
+            "## Honesty notes (scope of this suite)",
+            "- This is a PREDEFINED fault-mutation regression suite: each fault template and its",
+            "  expected reason code are co-constructed, so the numbers measure software-regression",
+            "  detection on frozen templates, NOT a general TPR/FPR against unknown real faults.",
+            "- The templates mirror the failures the Auditor was built to catch (legacy route",
+            "  failures and GRPO-Guard online faults) on frozen random instances.",
+            "- A missed template (TPR < 1.0) is a real Auditor bug and would be fixed, not reported away.",
         ]
     )
     return runner.RunResult(

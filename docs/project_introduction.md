@@ -105,16 +105,19 @@ artifacts/         规范运行输出（result/manifest/report，no-overwrite + 
 | 项目 | 数字 | 意义 |
 |---|---|---|
 | **Fraction 精确交叉验证** | 主实现 vs 双 oracle **mismatch == 0**（12 问题） | "exact benchmark"字面成立（H≤6 无浮点舍入） |
-| **自审计（审计器的审计）** | A1-A14 全部 13 类故障注入冻结随机实例：**TPR=1.000、FPR=0.000**（Wilson CI，N=200/类） | 工具是自己的被测对象；开发中真实抓出 3 个对照组构造 bug |
+| **Predefined Fault Mutation Regression Suite** | 13 类冻结故障模板全部触发预期 reason code（回归 TPR=1.0，9 类 N=200、4 类 runner 型 N=30），无对照误报（FPR=0.0，Wilson CI） | 预定义模板的软件回归检测；模板与预期 code 同源构造，故不称通用 TPR/FPR（对外部未知故障不声明）；开发中真实抓出 3 个对照组构造 bug |
 | **机制理论** | paired-replay 方差闭式、K-sample prefix floor、HH 1/q 放大——全部数值 ==0 diff 验证 | 不仅测出结论，还知道为什么是结构性的 |
 | **CTRI 大规模普查** | Fraction 精确 sign/rank 稳定性：N=5k → 100k → **10M（autodl2 服务器，48 CPU worker，88s）**，reversal 率收敛于 **3.2744% ± 0.006pp** | 三档规模速率稳定，服务器算力利用 |
 | **collapse 统计检验** | D002 [2,2,2,2] 落在候选宽度零分布的 0 分位（p ≤ 0.05） | MECH001 从硬编码谓词升级为假设检验 |
 
 ### 4.3 真实场景使用（"这个项目真的用起来过吗"——是）
 
-- **真实 Qwen3-4B GRPO 训练审计**（autodl2，GRPO-Guard 监督）：398/398 个
-  TRL 参数同步调用全部 ack——static_rollout 离线信号 CLEAR；policy
-  traceability OK（17.6GB/5 分片权重全哈希）。`artifacts/v0.1.5/real_training_audit/`
+- **Qwen3-4B GRPO manifest-level 集成检查**（autodl2，GRPO-Guard 监督的
+  smoke run，1 个 optimizer step）：检查到 398 个 TRL 同步调用均带 ack
+  （static_rollout 离线信号 CLEAR），manifest 含 5 个权重分片的 hash
+  metadata（17.6GB）。**边界**：尚未独立重哈希权重 bytes，也未完成
+  estimator-level 真实轨迹审计——这是 manifest-level integration smoke，
+  不是真实 credit assignment audit。`artifacts/v0.1.6/real_training_audit/`
 - **GRPO-Guard envelope 集成**（§25）：真实 Guard 轨迹 envelope 通过
   CreditAuditBundle 校验（ALLOW，hash-only 引用，fail-closed 钉在
   `grpo-guard-envelope-1.0`，无写回）

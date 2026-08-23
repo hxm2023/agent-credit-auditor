@@ -157,12 +157,15 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
     # ---- utility gate ----
     boot_dense = _bootstrap_median_improvement(np.asarray(ratios_vs_dense), BOOTSTRAP_SEED_KEY)
     boot_hh = _bootstrap_median_improvement(np.asarray(ratios_vs_hh), BOOTSTRAP_SEED_KEY + "::hh")
-    # relative improvement = 1 - ratio; threshold 0.2 => ratio <= 0.8 required
+    # relative improvement = 1 - ratio; threshold 0.2 => ratio <= 0.8 required.
+    # With ratio = candidate/baseline, "improvement CI lower bound > 0" is
+    # equivalent to ratio_ci_hi < 1 (P0-4, GPT review): a CI that CROSSES 1
+    # is an uncertain result and must FAIL, not pass via ci_lo < 1.
     utility_pass = (
         boot_dense["median"] <= 0.8
-        and boot_dense["ci_lo"] < 1.0
+        and boot_dense["ci_hi"] < 1.0
         and boot_hh["median"] <= 0.8
-        and boot_hh["ci_lo"] < 1.0
+        and boot_hh["ci_hi"] < 1.0
     )
     utility_gate = GateResult(
         gate="utility",

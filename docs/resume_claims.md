@@ -1,7 +1,7 @@
 # Resume claims (design §23.1 — docs_only_semantic variant)
 
 Only these claims may appear in public materials. Everything traces to
-artifacts/v0.1.1 + commit + SHA256SUMS.
+artifacts/v0.1.6 + commit + SHA256SUMS.
 
 ## Allowed bullets
 
@@ -21,7 +21,7 @@ artifacts/v0.1.1 + commit + SHA256SUMS.
   branching estimator wins the pre-registered matched-budget positive case
   (bias < 1e-16, MSE ratio 0.017 vs dense on the frozen focal world; the
   uncoupled control loses 7.0x vs dense — the win is genuinely
-  mechanism-driven; both ratios trace to artifacts/v0.1.1/M0);
+  mechanism-driven; both ratios trace to artifacts/v0.1.6/M0);
   (b) V001: the PC-RSG-style residual correction is calibration-accurate
   (expectation error ~1e-16) yet fixed-budget MSE fails ~26.5x vs dense —
   "calibration accurate" does not imply utility;

@@ -89,17 +89,23 @@ def refuse_existing(path: Path) -> None:
 
 
 def atomic_write_json(obj: Any, path: Path) -> None:
-    """Write canonical JSON atomically (temp file + rename)."""
+    """Write canonical JSON atomically (temp file + rename), LF line endings
+    (see atomic_write_text)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(canonical_json(obj) + "\n", encoding="utf-8")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(canonical_json(obj) + "\n")
     tmp.replace(path)
 
 
 def atomic_write_text(text: str, path: Path) -> None:
+    """Write text with explicit LF line endings (newline='\n') so the bytes
+    are platform-independent and the SHA256SUMS hashes reproduce on any
+    checkout (the v0.1.5 cross-platform checksum failure root cause)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
     tmp.replace(path)
 
 

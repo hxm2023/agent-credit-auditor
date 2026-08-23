@@ -38,8 +38,8 @@ background only and never appear as reproduced results.
 ```bash
 uv sync --frozen
 
-# one-command reproduction of the full release (all six packs + report)
-bash scripts/reproduce_all.sh artifacts/v0.1.1
+# one-command reproduction of the full release (all nine packs + report)
+bash scripts/reproduce_all.sh artifacts/v0.1.6
 
 # or run the packs individually
 bash scripts/run_m0.sh      # target audit
@@ -96,8 +96,11 @@ artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ## v0.1.4 additions
 
 - **Self-audit (audit of the auditor)**: every fault type A1-A14 injected
-  into frozen random instances (N=200/type) with TPR/FPR characterization
-  (Wilson CIs) — all 13 fault types TPR=1.000, FPR=0.000. The self-audit
+  into frozen random instances (9 types N=200, 4 runner-based types N=30):
+  all 13 predefined fault templates trigger their expected reason code
+  (regression TPR=1.0) with zero control false positives. The suite is a
+  Predefined Fault Mutation Regression Suite (templates and expected codes are
+  co-constructed; no general TPR/FPR claim). The self-audit
   itself caught and fixed 3 control-group bugs during development.
 - **Mechanism theory**: [`docs/mechanism_theory.md`](docs/mechanism_theory.md)
   — closed-form derivations (paired-replay variance → why the win is

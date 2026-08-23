@@ -91,6 +91,15 @@ def _source_hashes() -> dict[str, str]:
     return sha256_tree(src)
 
 
+def _lock_file_sha() -> str:
+    """SHA-256 of the uv.lock file (P0-5: previously the literal string
+    'uv.lock' was recorded instead of the file digest)."""
+    lock = Path(__file__).resolve().parents[2] / "uv.lock"
+    if lock.is_file():
+        return sha256_file(lock)
+    return "missing-uv.lock"
+
+
 def _seed_manifest_hashes(paths: list[Path]) -> dict[str, str]:
     return {p.name: sha256_file(p) for p in paths}
 
@@ -262,7 +271,7 @@ def _write_package(
         "python": sys.version.split()[0],
         "platform": platform.platform(),
         "cpu": platform.processor(),
-        "dependency_lock_sha": "uv.lock",
+        "dependency_lock_sha": _lock_file_sha(),
         "seed_manifest_hashes": seed_hashes,
         "source_hashes": src_hashes,
         "argv": ctx.argv if ctx else [],
@@ -305,15 +314,24 @@ def _git_commit() -> str | None:
 
 
 def _git_dirty() -> bool:
-    """Dirty = uncommitted changes to TRACKED source files. The artifacts
-    output tree is excluded: it is a generated output whose tracked state is
-    managed by the release commit, not by the run."""
+    """Dirty = uncommitted changes to TRACKED source files OR untracked
+    source files (P0-5, GPT review: untracked sources are dirty). The
+    artifacts output tree is excluded: it is a generated output whose tracked
+    state is managed by the release commit, not by the run."""
     try:
         out = subprocess.run(
             ["git", "diff", "--quiet", "HEAD", "--", ".", ":(exclude)artifacts"],
             capture_output=True,
             text=True,
         )
-        return out.returncode != 0
+        if out.returncode != 0:
+            return True
+        # untracked files outside artifacts/ make the tree dirty
+        untracked = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard", ".", ":(exclude)artifacts"],
+            capture_output=True,
+            text=True,
+        )
+        return bool(untracked.stdout.strip())
     except Exception:  # noqa: BLE001
         return True
