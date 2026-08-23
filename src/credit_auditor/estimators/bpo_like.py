@@ -11,6 +11,7 @@ in general. The old project found such literal BPO biased in 144/202 cases;
 this semantic port must show the same failure TYPE (T002/T003) on designed
 cases. Never report as a claim about official BPO (§9.2).
 """
+
 from __future__ import annotations
 
 import math
@@ -30,9 +31,7 @@ def _entropies(world: BernoulliSequenceMDP) -> list[float]:
     return h
 
 
-def bpo_like_distribution(
-    world: BernoulliSequenceMDP, epsilon: float = 0.1
-) -> list[WeightedVector]:
+def bpo_like_distribution(world: BernoulliSequenceMDP, epsilon: float = 0.1) -> list[WeightedVector]:
     H = world.horizon
     ents = _entropies(world)
     t_star = max(range(H), key=lambda t: ents[t])

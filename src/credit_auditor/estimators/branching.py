@@ -16,6 +16,7 @@ conditional value functions Q(a)=E[R|s_d,a], sigma^2(a)=Var(R|s_d,a):
 Cross terms with the dense part factor through Q(s_d, a_d): the trajectory's
 future reward is independent of the fresh pairs given (s_d, a_d).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -65,12 +66,8 @@ def _dp(problem: D002Problem, b) -> _Dp:
                     q[(t, s, a)] = e_r(t, s, a)
                     q2[(t, s, a)] = e_r(t, s, a)  # r in {0,1} -> E[r^2] = E[r]
                 else:
-                    e_future = sum(
-                        (p1 if sp == 1 else 1 - p1) * qpol.get((t + 1, sp), 0.0) for sp in (0, 1)
-                    )
-                    e2_future = sum(
-                        (p1 if sp == 1 else 1 - p1) * q2pol.get((t + 1, sp), 0.0) for sp in (0, 1)
-                    )
+                    e_future = sum((p1 if sp == 1 else 1 - p1) * qpol.get((t + 1, sp), 0.0) for sp in (0, 1))
+                    e2_future = sum((p1 if sp == 1 else 1 - p1) * q2pol.get((t + 1, sp), 0.0) for sp in (0, 1))
                     q[(t, s, a)] = e_future
                     q2[(t, s, a)] = e2_future
             pa = action_prob(problem, b, t, s)
@@ -94,7 +91,6 @@ def dense_bucket_moments(problem: D002Problem, b) -> BucketMoments:
 
 
 def branching_bucket_moments(problem: D002Problem, b, d: int, width: int) -> BucketMoments:
-    H = b.horizon
     Kb = max(1, width // 2)
     dp = _dp(problem, b)
     mean = np.zeros(3)
@@ -162,7 +158,13 @@ def moments_to_stats(bm: BucketMoments, target: np.ndarray) -> dict:
     bias = bm.mean - np.asarray(target, dtype=np.float64)
     var_trace = float(np.trace(bm.second_moment - np.outer(bm.mean, bm.mean)))
     bias_sq = float(bias @ bias)
-    return {"mean": bm.mean.tolist(), "bias": bias.tolist(), "bias_sq": bias_sq, "var_trace": var_trace, "mse": bias_sq + var_trace}
+    return {
+        "mean": bm.mean.tolist(),
+        "bias": bias.tolist(),
+        "bias_sq": bias_sq,
+        "var_trace": var_trace,
+        "mse": bias_sq + var_trace,
+    }
 
 
 def ksample_bucket_moments(problem: D002Problem, b, d: int, K: int) -> BucketMoments:
@@ -209,7 +211,9 @@ def ksample_bucket_moments(problem: D002Problem, b, d: int, K: int) -> BucketMom
                     for a in (0, 1):
                         p_tr = transition_prob(b, t, s, a)
                         for sp in (0, 1):
-                            new_reach[sp] = new_reach.get(sp, 0.0) + pr * (pa if a == 1 else 1 - pa) * (p_tr if sp == 1 else 1 - p_tr)
+                            new_reach[sp] = new_reach.get(sp, 0.0) + pr * (pa if a == 1 else 1 - pa) * (
+                                p_tr if sp == 1 else 1 - p_tr
+                            )
                 reach = new_reach
         g_from[s_d] = acc
     # E[mu(pre) mu(pre)^T] over the prefix distribution (states 0..d, actions 0..d-1)
@@ -222,12 +226,11 @@ def ksample_bucket_moments(problem: D002Problem, b, d: int, K: int) -> BucketMom
             actions = tuple((abits >> (d - 1 - t)) & 1 for t in range(d))
             p = 1.0
             s_pre = np.zeros(3)
-            ok = True
             for t in range(d):
                 s = states[t]
                 a = actions[t]
                 pa = action_prob(problem, b, t, s)
-                p *= (pa if a == 1 else 1 - pa)
+                p *= pa if a == 1 else 1 - pa
                 p_tr = transition_prob(b, t, s, a)
                 p *= p_tr if states[t + 1] == 1 else 1 - p_tr
                 j = b.param_map[t * 2 + s]
@@ -286,6 +289,7 @@ def paired_replay_all_bucket_moments(problem: D002Problem, b, d: int) -> BucketM
 
 def focal_reward_value(problem: D002Problem, b, actions: tuple[int, ...]) -> float:
     from credit_auditor.worlds.d002_shared_logits import focal_reward
+
     return focal_reward(problem, b, actions)
 
 
@@ -299,8 +303,8 @@ def dense_optimal_constant_moments(problem: D002Problem, b) -> BucketMoments:
         for t in range(b.horizon):
             j = b.param_map[t * 2 + states[t]]
             scores[j] += actions[t] - problem.logits[j]
-        num += p * r * scores ** 2
-        den += p * scores ** 2
+        num += p * r * scores**2
+        den += p * scores**2
     c = np.where(den > 0, num / np.maximum(den, 1e-30), 0.0)
     mean = np.zeros(3)
     mm = np.zeros((3, 3))
@@ -357,7 +361,9 @@ def mapping_cycle_cost(problem: D002Problem, mapping: dict) -> float:
     return total
 
 
-def fixed_budget_mse_from_moments(mean: np.ndarray, mm: np.ndarray, target: np.ndarray, budget: int, cycle_cost: float) -> float | None:
+def fixed_budget_mse_from_moments(
+    mean: np.ndarray, mm: np.ndarray, target: np.ndarray, budget: int, cycle_cost: float
+) -> float | None:
     """MSE at a fixed budget (floor complete cycles). None when infeasible."""
     if cycle_cost <= 0 or budget < cycle_cost:
         return None

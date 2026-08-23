@@ -14,6 +14,7 @@ Real-scenario angle: the fault patterns mirror the failures the Auditor was
 built to catch (the legacy route failures and GRPO-Guard online faults);
 running them at scale demonstrates the tool in realistic use.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,7 @@ from pathlib import Path
 import numpy as np
 
 from credit_auditor import runner
-from credit_auditor.schema import ClaimDecision, ClaimStatus, HeadlineDecision, ReasonCode, AuditDecision
+from credit_auditor.schema import AuditDecision, ClaimDecision, ClaimStatus, HeadlineDecision, ReasonCode
 
 ORACLE_DIR = Path(__file__).resolve().parents[1] / "oracles"
 
@@ -46,7 +47,7 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
     from credit_auditor.audit.numerical import sign_reversal_gate
     from credit_auditor.audit.sampling import correction_gate, support_gate
     from credit_auditor.audit.target import target_gate
-    from credit_auditor.estimators import bpo_like, hh_ht, sibling
+    from credit_auditor.estimators import sibling
     from credit_auditor.schema import Correction, SamplingSpec
     from credit_auditor.stats import exact_moments
     from credit_auditor.worlds.bernoulli_sequence import BernoulliSequenceMDP, deterministic_world
@@ -55,8 +56,11 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
     out: list[tuple[bool, dict]] = []
 
     def detect(gate, expected: ReasonCode) -> dict:
-        return {"detected": gate.status == "fail" and expected in gate.reason_codes,
-                "status": gate.status, "codes": [rc.value for rc in gate.reason_codes]}
+        return {
+            "detected": gate.status == "fail" and expected in gate.reason_codes,
+            "status": gate.status,
+            "codes": [rc.value for rc in gate.reason_codes],
+        }
 
     for i in range(n):
         seed = 1000 + i
@@ -71,13 +75,18 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
             out.append((True, detect(g, ReasonCode.T002_BIAS_EXCEEDS_TOLERANCE)))
             # control: the SAME estimator, honestly claimed as the LOCAL estimand
             from credit_auditor.estimands import local_decision
+
             m2 = exact_moments(dist, local_decision.target(world, t))
-            g2 = target_gate(m2, TOL, sibling.mechanism_signature_local(), "local_decision_gradient", "local_decision_gradient")
+            g2 = target_gate(
+                m2, TOL, sibling.mechanism_signature_local(), "local_decision_gradient", "local_decision_gradient"
+            )
             out.append((False, detect(g2, ReasonCode.T002_BIAS_EXCEEDS_TOLERANCE)))
 
         elif fault_id == "A2_PROPAGATED":
             m = exact_moments(sibling.propagated_sibling_distribution(world, t), target)
-            g = target_gate(m, TOL, sibling.mechanism_signature_propagated(), "full_score_gradient", "full_score_gradient")
+            g = target_gate(
+                m, TOL, sibling.mechanism_signature_propagated(), "full_score_gradient", "full_score_gradient"
+            )
             out.append((True, detect(g, ReasonCode.T003_LOCAL_TO_PREFIX_PROPAGATION)))
             m2 = exact_moments(sibling.local_sibling_distribution(world, t), target)
             g2 = target_gate(m2, TOL, sibling.mechanism_signature_local(), "full_score_gradient", "full_score_gradient")
@@ -92,10 +101,14 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
             out.append((False, detect(g2, ReasonCode.S001_ZERO_SUPPORT)))
 
         elif fault_id == "A4_WR_HT":
-            spec = SamplingSpec(decision_sampling={"replacement": "with_replacement"}, correction=Correction(name="horvitz_thompson"))
+            spec = SamplingSpec(
+                decision_sampling={"replacement": "with_replacement"}, correction=Correction(name="horvitz_thompson")
+            )
             g = correction_gate(spec)
             out.append((True, detect(g, ReasonCode.S003_WRONG_HH_HT_CORRECTION)))
-            spec2 = SamplingSpec(decision_sampling={"replacement": "with_replacement"}, correction=Correction(name="hansen_hurwitz"))
+            spec2 = SamplingSpec(
+                decision_sampling={"replacement": "with_replacement"}, correction=Correction(name="hansen_hurwitz")
+            )
             g2 = correction_gate(spec2)
             out.append((False, detect(g2, ReasonCode.S003_WRONG_HH_HT_CORRECTION)))
 
@@ -111,10 +124,20 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
                 rewards={(0, 0): 1.0, (0, 1): 1.0, (1, 0): 2.0, (1, 1): 2.0},
             )
             g = environment_gate(world_n)
-            out.append((True, {"detected": g["status"] == "fail" and any("E001" in rc for rc in g["reason_codes"]),
-                               "status": g["status"], "codes": g["reason_codes"]}))
+            out.append(
+                (
+                    True,
+                    {
+                        "detected": g["status"] == "fail" and any("E001" in rc for rc in g["reason_codes"]),
+                        "status": g["status"],
+                        "codes": g["reason_codes"],
+                    },
+                )
+            )
             g2 = environment_gate(world)
-            out.append((False, {"detected": g2["status"] == "fail", "status": g2["status"], "codes": g2["reason_codes"]}))
+            out.append(
+                (False, {"detected": g2["status"] == "fail", "status": g2["status"], "codes": g2["reason_codes"]})
+            )
 
         elif fault_id == "A14_NEAR_ZERO_SIGN":
             g = sign_reversal_gate(1e-16, -1e-16, margin=1e-8)
@@ -125,15 +148,31 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
         elif fault_id == "A5_COST_OMITTED":
             from credit_auditor.audit.cost import cost_gate
             from credit_auditor.schema import CostSpec
+
             c = CostSpec(calculator_id="dense_horizon_v1", parameters={"horizon": 4})
             b = CostSpec(calculator_id="d002_branching_v1", parameters={"horizon": 6, "depth": 4, "width": 8})
-            g = cost_gate(candidate_cost=c, candidate_actual_cycle_cost=4, baseline_cost=b, baseline_actual_cycle_cost=27, budget=512, declared_mechanism_terms=["prefix", "suffixes", "restores"])
+            g = cost_gate(
+                candidate_cost=c,
+                candidate_actual_cycle_cost=4,
+                baseline_cost=b,
+                baseline_actual_cycle_cost=27,
+                budget=512,
+                declared_mechanism_terms=["prefix", "suffixes", "restores"],
+            )
             out.append((True, detect(g, ReasonCode.C001_UNMATCHED_TRANSITION_BUDGET)))
-            g2 = cost_gate(candidate_cost=b, candidate_actual_cycle_cost=27, baseline_cost=b, baseline_actual_cycle_cost=27, budget=512, declared_mechanism_terms=["prefix", "suffixes", "restores"])
+            g2 = cost_gate(
+                candidate_cost=b,
+                candidate_actual_cycle_cost=27,
+                baseline_cost=b,
+                baseline_actual_cycle_cost=27,
+                budget=512,
+                declared_mechanism_terms=["prefix", "suffixes", "restores"],
+            )
             out.append((False, detect(g2, ReasonCode.C001_UNMATCHED_TRANSITION_BUDGET)))
 
         elif fault_id == "A6_WEAK_BASELINE":
             from credit_auditor.audit.cost import baseline_entrypoint_gate
+
             g = baseline_entrypoint_gate("plain_reinforce", "dense_optimal_constant_root_rloo")
             out.append((True, detect(g, ReasonCode.C003_BASELINE_ENTRYPOINT_UNFAITHFUL)))
             g2 = baseline_entrypoint_gate("dense_optimal_constant_root_rloo", "dense_optimal_constant_root_rloo")
@@ -165,15 +204,26 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
 
         elif fault_id == "A10_ORACLE_IMPORT":
             from credit_auditor.oracles.isolation import check_import_isolation
+
             evil = Path("/tmp/evil_oracle_%d.py" % seed)
             evil.write_text("from credit_auditor.estimators import dense\n", encoding="utf-8")
-            out.append((True, {"detected": bool(check_import_isolation(evil)), "status": "fail" if check_import_isolation(evil) else "pass", "codes": []}))
+            out.append(
+                (
+                    True,
+                    {
+                        "detected": bool(check_import_isolation(evil)),
+                        "status": "fail" if check_import_isolation(evil) else "pass",
+                        "codes": [],
+                    },
+                )
+            )
             clean = Path("/tmp/clean_oracle_%d.py" % seed)
             clean.write_text("import json, sys\n", encoding="utf-8")
             out.append((False, {"detected": bool(check_import_isolation(clean)), "status": "pass", "codes": []}))
 
         elif fault_id == "A12_EVIDENCE_MISSING":
             from credit_auditor.audit.provenance import audit_artifact_dir
+
             d = Path("/tmp/exp_%d" % seed)
             d.mkdir(exist_ok=True)
             (d / "REPORT.md").write_text("# only report\n", encoding="utf-8")
@@ -183,10 +233,27 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
             # manifest, empty SHA256SUMS -> no entries to verify -> pass)
             d2 = Path("/tmp/exp_ok_%d" % seed)
             d2.mkdir(exist_ok=True)
-            for name in ("protocol.json", "result.json", "oracle_result.json", "gate_decision.json", "raw_rows.jsonl.zst", "REPORT.md"):
+            for name in (
+                "protocol.json",
+                "result.json",
+                "oracle_result.json",
+                "gate_decision.json",
+                "raw_rows.jsonl.zst",
+                "REPORT.md",
+            ):
                 (d2 / name).write_text("{}", encoding="utf-8")
             (d2 / "run_manifest.json").write_text(
-                json.dumps({"protocol_id": "x", "utc_start": "2026-08-23", "source_commit": "a" * 40, "dirty": False, "python": "3.12", "platform": "test", "argv": []}),
+                json.dumps(
+                    {
+                        "protocol_id": "x",
+                        "utc_start": "2026-08-23",
+                        "source_commit": "a" * 40,
+                        "dirty": False,
+                        "python": "3.12",
+                        "platform": "test",
+                        "argv": [],
+                    }
+                ),
                 encoding="utf-8",
             )
             (d2 / "SHA256SUMS").write_text("", encoding="utf-8")
@@ -195,6 +262,7 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
 
         elif fault_id == "A13_OVERWRITE":
             from credit_auditor.canonical import NoOverwriteError, refuse_existing
+
             p = Path("/tmp/canon_%d" % seed)
             p.mkdir(exist_ok=True)
             try:
@@ -225,9 +293,21 @@ def run_self_audit(ctx: runner.RunContext) -> runner.RunResult:
         "A12_EVIDENCE_MISSING": int(scale.get("heavy_instances", 30)),
         "A13_OVERWRITE": int(scale.get("heavy_instances", 30)),
     }
-    fault_ids = ["A1_LOCAL_AS_FULL", "A2_PROPAGATED", "A3_ZERO_SUPPORT", "A4_WR_HT", "A5_COST_OMITTED",
-                 "A6_WEAK_BASELINE", "A7_SPLIT_OVERLAP", "A9_WIDTH_COLLAPSE", "A10_ORACLE_IMPORT",
-                 "A11_NOOP_ALT", "A12_EVIDENCE_MISSING", "A13_OVERWRITE", "A14_NEAR_ZERO_SIGN"]
+    fault_ids = [
+        "A1_LOCAL_AS_FULL",
+        "A2_PROPAGATED",
+        "A3_ZERO_SUPPORT",
+        "A4_WR_HT",
+        "A5_COST_OMITTED",
+        "A6_WEAK_BASELINE",
+        "A7_SPLIT_OVERLAP",
+        "A9_WIDTH_COLLAPSE",
+        "A10_ORACLE_IMPORT",
+        "A11_NOOP_ALT",
+        "A12_EVIDENCE_MISSING",
+        "A13_OVERWRITE",
+        "A14_NEAR_ZERO_SIGN",
+    ]
 
     t0 = time.perf_counter()
     rows: list[dict] = []
@@ -239,16 +319,18 @@ def run_self_audit(ctx: runner.RunContext) -> runner.RunResult:
         tpr = sum(1 for o in faults if o["detected"]) / len(faults)
         fpr = sum(1 for o in controls if o["detected"]) / len(controls)
         ci_tpr = _wilson_ci(sum(1 for o in faults if o["detected"]), len(faults))
-        rows.append({
-            "fault": fid,
-            "n_fault": len(faults),
-            "n_control": len(controls),
-            "tpr": tpr,
-            "tpr_ci": [round(ci_tpr[0], 4), round(ci_tpr[1], 4)],
-            "fpr": fpr,
-            "detected": sum(1 for o in faults if o["detected"]),
-            "false_positives": sum(1 for o in controls if o["detected"]),
-        })
+        rows.append(
+            {
+                "fault": fid,
+                "n_fault": len(faults),
+                "n_control": len(controls),
+                "tpr": tpr,
+                "tpr_ci": [round(ci_tpr[0], 4), round(ci_tpr[1], 4)],
+                "fpr": fpr,
+                "detected": sum(1 for o in faults if o["detected"]),
+                "false_positives": sum(1 for o in controls if o["detected"]),
+            }
+        )
     elapsed = time.perf_counter() - t0
 
     all_tpr_1 = all(r["tpr"] == 1.0 for r in rows)
@@ -262,13 +344,18 @@ def run_self_audit(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.PASS if (all_tpr_1 and all_fpr_0) else ClaimStatus.FAIL,
             required_gates=["integrity"],
             reason_codes=[ReasonCode.P001_EVIDENCE_INCOMPLETE] if underperforming else [],
-            claim_ceiling={"allowed": ["detection-rate characterization on frozen random instances"], "forbidden": ["LLM-agent utility", "fault detection on uncharacterized instances"]},
+            claim_ceiling={
+                "allowed": ["detection-rate characterization on frozen random instances"],
+                "forbidden": ["LLM-agent utility", "fault detection on uncharacterized instances"],
+            },
         )
     ]
     decision = AuditDecision(
         experiment_integrity=ClaimStatus.PASS,
         claims=claims,
-        headline_decision=HeadlineDecision(proposed_new_method_claim=ClaimStatus.PASS if all_tpr_1 and all_fpr_0 else ClaimStatus.SUPPORT_ONLY),
+        headline_decision=HeadlineDecision(
+            proposed_new_method_claim=ClaimStatus.PASS if all_tpr_1 and all_fpr_0 else ClaimStatus.SUPPORT_ONLY
+        ),
     )
     report = "\n".join(
         [
@@ -298,7 +385,7 @@ def run_self_audit(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": True},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": rows},
+        raw_rows=rows,
     )
 
 

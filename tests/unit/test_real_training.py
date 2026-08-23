@@ -1,9 +1,9 @@
 """Real GRPO training audit tests: sync-ack signal, policy traceability,
 schema-shaped fixtures mirroring the fetched real artifacts."""
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from credit_auditor.audit.real_training import (
     audit_policy_manifest,

@@ -1,8 +1,7 @@
 """Auditor's own fault-injection matrix, A1-A4 (§14) — the Auditor must
 detect each injected error with the fixed reason code."""
-from __future__ import annotations
 
-import numpy as np
+from __future__ import annotations
 
 from credit_auditor.audit.sampling import correction_gate, support_gate
 from credit_auditor.audit.target import target_gate
@@ -22,8 +21,11 @@ def test_A1_local_target_labeled_as_full_gradient():
     dist = sibling.local_sibling_distribution(world, t)
     m = exact_moments(dist, target_full)
     gate = target_gate(
-        m, TOL, sibling.mechanism_signature_local(),
-        claimed_estimand="full_score_gradient", estimand_id="full_score_gradient",
+        m,
+        TOL,
+        sibling.mechanism_signature_local(),
+        claimed_estimand="full_score_gradient",
+        estimand_id="full_score_gradient",
     )
     assert gate.status == "fail"
     assert ReasonCode.T002_BIAS_EXCEEDS_TOLERANCE in gate.reason_codes
@@ -35,8 +37,11 @@ def test_A2_sibling_credit_propagated_to_shared_prefix():
     t = 1
     m = exact_moments(sibling.propagated_sibling_distribution(world, t), world.true_gradient())
     gate = target_gate(
-        m, TOL, sibling.mechanism_signature_propagated(),
-        claimed_estimand="full_score_gradient", estimand_id="full_score_gradient",
+        m,
+        TOL,
+        sibling.mechanism_signature_propagated(),
+        claimed_estimand="full_score_gradient",
+        estimand_id="full_score_gradient",
     )
     assert gate.status == "fail"
     assert ReasonCode.T003_LOCAL_TO_PREFIX_PROPAGATION in gate.reason_codes
@@ -90,8 +95,11 @@ def test_bpo_like_is_biased_and_detected():
     world = deterministic_world(seed=204, horizon=4)
     m = exact_moments(bpo_like.bpo_like_distribution(world), world.true_gradient())
     gate = target_gate(
-        m, TOL, bpo_like.mechanism_signature(),
-        claimed_estimand="full_score_gradient", estimand_id="full_score_gradient",
+        m,
+        TOL,
+        bpo_like.mechanism_signature(),
+        claimed_estimand="full_score_gradient",
+        estimand_id="full_score_gradient",
     )
     assert gate.status == "fail"
     assert gate.reason_codes == [ReasonCode.T003_LOCAL_TO_PREFIX_PROPAGATION]

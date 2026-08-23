@@ -1,5 +1,6 @@
 """Legacy bundle validator tests (design §13.6): structure, hashes, anchor,
 mode gating."""
+
 from __future__ import annotations
 
 import json

@@ -7,6 +7,7 @@ no float bit-exactness claims across platforms (floats are written with
 repr().lower() so the hash is stable within a platform; near-zero markers are
 handled by the numerical-margin gate, not by hashing tricks).
 """
+
 from __future__ import annotations
 
 import hashlib

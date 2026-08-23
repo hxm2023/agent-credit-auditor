@@ -18,12 +18,13 @@ NOVELTY STATUS: CLASSICAL COUPLED/NONRECTANGULAR ROBUST ADVANTAGE AND
 CROSS-WORLD PARTIAL IDENTIFICATION EQUIVALENCE — not a new theory (§3.4).
 CLAIM STATUS: SUPPORT_ONLY DIAGNOSTIC.
 """
+
 from __future__ import annotations
 
 import itertools
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Callable, Mapping
 
 # ---------------------------------------------------------------------------
 # Response functions and observation regimes
@@ -76,9 +77,11 @@ def mixed_fibers(fiber_signs_map: dict[tuple[int, ...], set[str]]) -> list[tuple
 # Continuation family: exact action values, sign/rank stability
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ContinuationPolicy:
     """A continuation policy: per-state action probabilities (Fractions)."""
+
     probs: Mapping[tuple[int, ...], Fraction]  # state -> P(a=1)
 
 
@@ -93,14 +96,18 @@ def action_value(
     """Expected accumulated reward from (s, a) under the continuation policy,
     exact Fraction arithmetic. State space: binary chain."""
     if horizon == 1:
-        return Fraction(reward[(s, a, 1)]) * transitions[(s, a, 1)] + Fraction(reward[(s, a, 0)]) * (1 - transitions[(s, a, 1)])
+        return Fraction(reward[(s, a, 1)]) * transitions[(s, a, 1)] + Fraction(reward[(s, a, 0)]) * (
+            1 - transitions[(s, a, 1)]
+        )
     v = Fraction(0)
     for sp in (0, 1):
         p_tr = transitions[(s, a, sp)] if sp == 1 else 1 - transitions[(s, a, 1)]
         if p_tr == 0:
             continue
         p_a1 = policy.probs.get((horizon - 1, sp), Fraction(1, 2))
-        sub = p_a1 * action_value(reward, transitions, policy, sp, 1, horizon - 1) + (1 - p_a1) * action_value(reward, transitions, policy, sp, 0, horizon - 1)
+        sub = p_a1 * action_value(reward, transitions, policy, sp, 1, horizon - 1) + (1 - p_a1) * action_value(
+            reward, transitions, policy, sp, 0, horizon - 1
+        )
         v += p_tr * (Fraction(reward[(s, a, sp)]) + sub)
     return v
 
@@ -139,9 +146,7 @@ def rank_reversals(values_by_action: dict[tuple[int, int], list[Fraction]], s: i
     return sum(1 for d in diffs if (d > 0) != (majority > 0))
 
 
-def coordinate_box_vs_coupled(
-    values_by_action: dict[tuple[int, int], list[Fraction]], s: int
-) -> dict:
+def coordinate_box_vs_coupled(values_by_action: dict[tuple[int, int], list[Fraction]], s: int) -> dict:
     """Coordinate-box relaxation (per-action ranges independently) vs the
     coupled family (joint realizations): the box is strictly larger when the
     joint realizations are nonrectangular."""

@@ -13,6 +13,7 @@ Structure:
   utility gate: median relative improvement >= 0.2 with bootstrap lower bound
   > 0 vs dense AND uniform HH, else FAIL (U002).
 """
+
 from __future__ import annotations
 
 import json
@@ -22,18 +23,18 @@ from pathlib import Path
 import numpy as np
 
 from credit_auditor import runner
-from credit_auditor.audit.cost import baseline_entrypoint_gate, cost_gate
+from credit_auditor.audit.cost import cost_gate
 from credit_auditor.audit.target import compare_oracle
 from credit_auditor.estimators import dense, hh_ht, pc_rsg
 from credit_auditor.schema import (
+    AuditDecision,
     ClaimDecision,
     ClaimStatus,
     GateResult,
     HeadlineDecision,
     ReasonCode,
-    AuditDecision,
 )
-from credit_auditor.stats import ExactMoments, exact_moments, fixed_budget_mse
+from credit_auditor.stats import exact_moments, fixed_budget_mse
 from credit_auditor.worlds.bernoulli_sequence import deterministic_world
 
 ORACLE_DIR = Path(__file__).resolve().parents[1] / "oracles"
@@ -46,9 +47,7 @@ def _q_uniform_floor(horizon: int, epsilon: float = 0.1) -> tuple[float, ...]:
     return tuple(base + floor for _ in range(horizon))
 
 
-def _bootstrap_median_improvement(
-    ratios: np.ndarray, seed_key: str, replicates: int = 10000
-) -> dict:
+def _bootstrap_median_improvement(ratios: np.ndarray, seed_key: str, replicates: int = 10000) -> dict:
     """Bootstrap over problem-level paired MSE ratios (fixed seed)."""
     import hashlib
 
@@ -67,7 +66,6 @@ def _bootstrap_median_improvement(
 
 
 def run_v001(ctx: runner.RunContext) -> runner.RunResult:
-    tol = {"bias_rel": 1e-9, "bias_abs": 1e-12}
     budget_full = 512
     primary_budget = int(budget_full * 1 / 4)  # protocol primary_budget_fraction 1/4
 
@@ -96,7 +94,9 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
             dist = pc_rsg.pc_rsg_distribution(w, q, branch_width)
             m = exact_moments(dist, mu_target)
             cal_rows.append({"t": t, "expectation_err": float(np.max(np.abs(m.bias)))})
-        calibration_accuracy.append({"problem": row["problem_id"], "max_expectation_err": max(r["expectation_err"] for r in cal_rows)})
+        calibration_accuracy.append(
+            {"problem": row["problem_id"], "max_expectation_err": max(r["expectation_err"] for r in cal_rows)}
+        )
     calibration_cpu_seconds = time.perf_counter() - _cal_t0  # §7.3: reported only
 
     # ---- test problems: moments + fixed-budget MSE ----
@@ -118,7 +118,9 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
         m_d = fixed_budget_mse(exact_moments(dense.dense_distribution(w), target), primary_budget, H)
         m_h = fixed_budget_mse(exact_moments(hh_ht.uniform_hh_distribution(w), target), primary_budget, H)
         e_cost = pc_rsg.cycle_cost_formula(H, q)
-        m_p = fixed_budget_mse(exact_moments(pc_rsg.pc_rsg_distribution(w, q, branch_width), target), primary_budget, e_cost)
+        m_p = fixed_budget_mse(
+            exact_moments(pc_rsg.pc_rsg_distribution(w, q, branch_width), target), primary_budget, e_cost
+        )
 
         # C gate: candidate's mechanism needs prefix+suffixes+restores; its
         # declared cost covers them (CostSpec evaluated via the same formula).
@@ -131,8 +133,12 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
         )
         gates.append(cost_check)
         if not ok:
-            gates.append(GateResult(gate="independent_oracle", status="fail", reason_codes=[ReasonCode.E002_ORACLE_MISMATCH]))
+            gates.append(
+                GateResult(gate="independent_oracle", status="fail", reason_codes=[ReasonCode.E002_ORACLE_MISMATCH])
+            )
 
+        if m_d.mse_at_budget is None or m_h.mse_at_budget is None or m_p.mse_at_budget is None:
+            raise runner.DriverError(f"infeasible budget at problem {row['problem_id']}")
         rows.append(
             {
                 "problem_id": row["problem_id"],
@@ -152,7 +158,12 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
     boot_dense = _bootstrap_median_improvement(np.asarray(ratios_vs_dense), BOOTSTRAP_SEED_KEY)
     boot_hh = _bootstrap_median_improvement(np.asarray(ratios_vs_hh), BOOTSTRAP_SEED_KEY + "::hh")
     # relative improvement = 1 - ratio; threshold 0.2 => ratio <= 0.8 required
-    utility_pass = boot_dense["median"] <= 0.8 and boot_dense["ci_lo"] < 1.0 and boot_hh["median"] <= 0.8 and boot_hh["ci_lo"] < 1.0
+    utility_pass = (
+        boot_dense["median"] <= 0.8
+        and boot_dense["ci_lo"] < 1.0
+        and boot_hh["median"] <= 0.8
+        and boot_hh["ci_lo"] < 1.0
+    )
     utility_gate = GateResult(
         gate="utility",
         status="pass" if utility_pass else "fail",
@@ -167,14 +178,22 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.FAIL,
             required_gates=["matched_cost", "utility", "independent_oracle"],
             reason_codes=[ReasonCode.U002_UTILITY_THRESHOLD_FAILED],
-            claim_ceiling={"allowed": ["semantic reproduction of the V001 failure TYPE"], "forbidden": ["PC-RSG works", "historical 24.81x reproduction"]},
+            claim_ceiling={
+                "allowed": ["semantic reproduction of the V001 failure TYPE"],
+                "forbidden": ["PC-RSG works", "historical 24.81x reproduction"],
+            },
         ),
         ClaimDecision(
             claim_id="v001_calibration_accurate",
             claim_text="the residual correction expectation is unbiased (calibration accurate)",
-            status=ClaimStatus.PASS if max(c["max_expectation_err"] for c in calibration_accuracy) < 1e-9 else ClaimStatus.FAIL,
+            status=ClaimStatus.PASS
+            if max(c["max_expectation_err"] for c in calibration_accuracy) < 1e-9
+            else ClaimStatus.FAIL,
             required_gates=["target_identity"],
-            claim_ceiling={"allowed": ["unbiased correction on frozen exact worlds"], "forbidden": ["calibration is free in general (legacy protocol boundary)"]},
+            claim_ceiling={
+                "allowed": ["unbiased correction on frozen exact worlds"],
+                "forbidden": ["calibration is free in general (legacy protocol boundary)"],
+            },
         ),
     ]
     integrity = ClaimStatus.PASS if (oracle_ok and all(g.status == "pass" for g in gates)) else ClaimStatus.INVALID
@@ -212,17 +231,19 @@ def run_v001(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": oracle_ok},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": rows},
+        raw_rows=rows,
     )
 
 
 def _dummy_cost_spec():
     from credit_auditor.schema import CostSpec
+
     return CostSpec(calculator_id="dense_horizon_v1", parameters={"horizon": 6})
 
 
 def pc_rsg_cycle_cost(horizon: int, q: tuple[float, ...]) -> float:
     from fractions import Fraction
+
     return float(Fraction(horizon) + sum(Fraction(q[t]) * (t + 2 * (horizon - t) + 1) for t in range(horizon)))
 
 

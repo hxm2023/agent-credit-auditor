@@ -1,5 +1,6 @@
 """Oracle independence tests (§17.2): different algorithms, independent
 process, import-graph isolation."""
+
 from __future__ import annotations
 
 import json
@@ -52,7 +53,6 @@ def test_oracle_input_hash_changes_with_world():
 def test_ast_import_isolation_both_oracles():
     import ast
     import sys
-    from types import ModuleType
 
     stdlib = {m for m in sys.stdlib_module_names}
     for script in ("enumeration_oracle.py", "bellman_oracle.py"):
@@ -84,6 +84,7 @@ def test_monkeypatching_primary_does_not_change_oracle():
     baseline = list(out["gradient"])
     # sabotage the primary-side helper
     import credit_auditor.worlds.bernoulli_sequence as bs
+
     orig = bs.BernoulliSequenceMDP.true_gradient
     bs.BernoulliSequenceMDP.true_gradient = lambda self: np.zeros(self.horizon)
     try:
@@ -95,6 +96,7 @@ def test_monkeypatching_primary_does_not_change_oracle():
 
 def test_oracle_rejects_bad_spec():
     import pytest
+
     with pytest.raises(Exception):
         runner.run_oracle_subprocess(
             ORACLE_DIR / "enumeration_oracle.py",

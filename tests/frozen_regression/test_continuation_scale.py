@@ -1,5 +1,6 @@
 """CTRI large-scale census frozen regression: stable rates across the two
 frozen scales, support_only verdicts, banners."""
+
 from __future__ import annotations
 
 import json

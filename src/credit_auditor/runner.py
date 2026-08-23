@@ -19,6 +19,7 @@ Steps:
 Steps 8-10 failures still produce an INVALID/FAIL result package. Prerequisite,
 hash, or no-overwrite failures terminate before canonical output creation (§16).
 """
+
 from __future__ import annotations
 
 import datetime as _dt
@@ -27,13 +28,12 @@ import os
 import platform
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any
 
-from credit_auditor import __version__  # type: ignore[attr-defined]
 from credit_auditor.canonical import (
-    NoOverwriteError,
     atomic_write_json,
     atomic_write_text,
     refuse_existing,
@@ -69,6 +69,7 @@ class RunResult:
     report_md: str = ""
     exit_status: str = "ok"  # ok | driver_failed | invalid | gate_failed
     manifest_extra: dict[str, Any] = field(default_factory=dict)
+    raw_rows: list[Any] = field(default_factory=list)  # §18 raw rows -> zst only
 
 
 _DRIVERS: dict[str, dict[str, Callable[[RunContext], RunResult]]] = {}
@@ -82,10 +83,7 @@ def get_driver(protocol_id: str, phase: str) -> Callable[[RunContext], RunResult
     try:
         return _DRIVERS[protocol_id][phase]
     except KeyError:
-        raise DriverError(
-            f"no driver for protocol_id={protocol_id!r} phase={phase!r} "
-            f"(registered: {sorted(_DRIVERS)})"
-        )
+        raise DriverError(f"no driver for protocol_id={protocol_id!r} phase={phase!r} (registered: {sorted(_DRIVERS)})")
 
 
 def _source_hashes() -> dict[str, str]:
@@ -98,9 +96,18 @@ def _seed_manifest_hashes(paths: list[Path]) -> dict[str, str]:
 
 
 KNOWN_GATES = {
-    "integrity", "target_identity", "independent_oracle", "sampling_support",
-    "matched_cost", "heldout_split", "utility", "mechanism", "environment",
-    "provenance", "numerical_margin", "novelty",
+    "integrity",
+    "target_identity",
+    "independent_oracle",
+    "sampling_support",
+    "matched_cost",
+    "heldout_split",
+    "utility",
+    "mechanism",
+    "environment",
+    "provenance",
+    "numerical_margin",
+    "novelty",
 }
 
 
@@ -127,7 +134,9 @@ def validate_protocol(protocol_path: Path) -> Protocol:
         req = claim.get("required_gates", []) if isinstance(claim, dict) else []
         bad = [g for g in req if g not in KNOWN_GATES]
         if bad:
-            raise ValueError(f"protocol {proto.protocol_id} claim {claim.get('claim_id')}: unknown required gate(s) {bad}")
+            raise ValueError(
+                f"protocol {proto.protocol_id} claim {claim.get('claim_id')}: unknown required gate(s) {bad}"
+            )
     return proto
 
 
@@ -259,6 +268,17 @@ def _write_package(
         "argv": ctx.argv if ctx else [],
         "exit_status": run_result.exit_status,
     }
+    # §18: raw rows live ONLY in the zst archive (v0.1.6 infra fix); the
+    # manifest carries a count + hash reference, never the full rows
+    # (previously the embedded raw_results bloated manifests to 10+ MB and
+    # duplicated the zst content).
+    raw = run_result.raw_rows or run_result.manifest_extra.get("raw_results") or []
+    if isinstance(raw, list) and raw:
+        from credit_auditor.canonical import write_jsonl_zst
+
+        write_jsonl_zst(raw, dirpath / "raw_rows.jsonl.zst")
+        manifest["raw_rows_count"] = len(raw)
+        manifest["raw_rows_sha256"] = sha256_file(dirpath / "raw_rows.jsonl.zst")
     manifest.update(run_result.manifest_extra)
 
     atomic_write_json(proto.model_dump(mode="json"), dirpath / "protocol.json")
@@ -269,10 +289,6 @@ def _write_package(
     atomic_write_text(run_result.report_md, dirpath / "REPORT.md")
     if run_result.result.get("selection") is not None:
         atomic_write_json(run_result.result["selection"], dirpath / "selection.json")
-    raw = run_result.manifest_extra.get("raw_results")
-    if isinstance(raw, list) and raw:
-        from credit_auditor.canonical import write_jsonl_zst
-        write_jsonl_zst(raw, dirpath / "raw_rows.jsonl.zst")
 
     sums = {k: v for k, v in sha256_tree(dirpath).items() if k != "SHA256SUMS"}
     lines = [f"{v}  {k}" for k, v in sorted(sums.items())]

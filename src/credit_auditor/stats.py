@@ -15,6 +15,7 @@ dense backbone / common random numbers / adaptive state must compute the JOINT
 estimator distribution instead (§5.5). Shared calibration/backbone costs must
 be deducted per protocol, not divided out.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

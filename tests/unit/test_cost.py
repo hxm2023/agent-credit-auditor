@@ -1,10 +1,10 @@
 """Cost calculator tests (§7.3 — hand-computed fixtures, no eval, Fraction math)."""
+
 from __future__ import annotations
 
 from fractions import Fraction
 
 import pytest
-from pydantic import ValidationError
 
 from credit_auditor.schema import CostSpec
 
@@ -51,7 +51,11 @@ def test_unknown_calculator_rejected():
 
 
 def test_invalid_domain_rejected():
-    for kwargs in ({"horizon": 0, "depth": 0, "width": 1}, {"horizon": 6, "depth": 6, "width": 1}, {"horizon": 6, "depth": 4, "width": 0}):
+    for kwargs in (
+        {"horizon": 0, "depth": 0, "width": 1},
+        {"horizon": 6, "depth": 6, "width": 1},
+        {"horizon": 6, "depth": 4, "width": 0},
+    ):
         c = CostSpec(calculator_id="d002_branching_v1", parameters=kwargs)
         with pytest.raises(ValueError):
             c.evaluate_cycle()

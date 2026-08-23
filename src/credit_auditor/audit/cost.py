@@ -9,6 +9,7 @@ Checks:
 - baseline entrypoint is the frozen strong envelope, not a weak constant
   (C003).
 """
+
 from __future__ import annotations
 
 from fractions import Fraction

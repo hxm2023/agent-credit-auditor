@@ -9,6 +9,7 @@ pairs (equivalently a decision reduct / functional-dependency key).
 NOVELTY STATUS: CLASSICAL DECISION-REDUCT / FD / HITTING-SET EQUIVALENCE
 CLAIM STATUS: TEACHING OR TELEMETRY-SCHEMA DIAGNOSTIC ONLY  (§13.5)
 """
+
 from __future__ import annotations
 
 import itertools
@@ -80,5 +81,5 @@ def minimal_schemas(universe: TelemetryUniverse) -> list[tuple[int, ...]]:
 def sign_label_universe() -> TelemetryUniverse:
     """Sign-coarsened labels (only the sign of the label value matters)."""
     u = default_universe()
-    labels = tuple("+" if l == "A" else "-" for l in u.labels)
+    labels = tuple("+" if label == "A" else "-" for label in u.labels)
     return TelemetryUniverse(rows=u.rows, labels=labels)

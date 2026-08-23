@@ -1,5 +1,6 @@
 """GRPO-Guard envelope adapter tests (design §25): fail-closed on everything
 unknown, hash-only references, no write-back."""
+
 from __future__ import annotations
 
 import pytest
@@ -70,6 +71,7 @@ def test_bundle_roundtrip():
 
 def test_bundle_canonical_hash_stable():
     from credit_auditor.canonical import sha256_json
+
     b = CreditAuditBundle(
         guard_schema_version="grpo-guard-envelope-1.0",
         guard_envelope_refs=[GuardEnvelopeRef(uri="u", sha256="c" * 64)],
@@ -80,7 +82,7 @@ def test_bundle_canonical_hash_stable():
 def test_no_write_back_api():
     """§25: the adapter exposes validation only — there is no API that writes
     to Guard artifacts."""
-    import inspect
     from credit_auditor.adapters import grpo_guard_envelope as g
+
     public = [n for n in dir(g) if not n.startswith("_")]
     assert not any("write" in n.lower() or "publish" in n.lower() for n in public)

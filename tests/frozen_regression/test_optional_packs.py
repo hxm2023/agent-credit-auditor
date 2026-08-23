@@ -1,5 +1,6 @@
 """Optional support-only packs (§13.4 continuation, §13.5 minimal logging):
 stable SUPPORT_ONLY verdicts, banners, and honest abstention."""
+
 from __future__ import annotations
 
 import json
@@ -7,11 +8,11 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.full
-
 from credit_auditor import runner
 from credit_auditor.experiments import continuation as cont_exp
 from credit_auditor.experiments import minimal_logging as ml_exp
+
+pytestmark = pytest.mark.full
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -86,6 +87,7 @@ def test_minimal_logging_counts(ml_run):
 
 def test_optional_pack_evidence_complete(cont_run, ml_run):
     from credit_auditor.audit.provenance import audit_artifact_dir
+
     for d in (cont_run, ml_run):
         audit = audit_artifact_dir(d)
         assert audit["integrity"] == "pass", audit["errors"]

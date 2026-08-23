@@ -12,6 +12,7 @@ own SHA256SUMS is NOT self-anchored (§13.6).
 The validator itself is fully testable with synthetic bundles; it does not
 depend on the real legacy code existing anywhere.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -105,7 +106,8 @@ def validate_legacy_bundle(bundle_dir: Path, anchor_root_sha256: str | None = No
             h, _, rel = line.partition("  ")
             declared[rel] = h
         mismatches = [
-            rel for rel, h in declared.items()
+            rel
+            for rel, h in declared.items()
             if rel != "SHA256SUMS" and (not (bundle_dir / rel).is_file() or sha256_file(bundle_dir / rel) != h)
         ]
         if mismatches:
@@ -142,7 +144,11 @@ def validate_legacy_bundle(bundle_dir: Path, anchor_root_sha256: str | None = No
         reasons.append(f"root sha256 {root[:16]}... != anchor {anchor_root_sha256[:16]}...")
     if reasons:
         return {"status": "REJECT", "reasons": reasons, "root_sha256": root}
-    return {"status": "VALID", "root_sha256": root, "protocol_hashes": json.loads(manifest_path.read_text(encoding="utf-8")).get("protocol_hashes", {})}
+    return {
+        "status": "VALID",
+        "root_sha256": root,
+        "protocol_hashes": json.loads(manifest_path.read_text(encoding="utf-8")).get("protocol_hashes", {}),
+    }
 
 
 def legacy_mode_for(protocol_reconstruction_mode: str, bundle_valid: bool) -> str:

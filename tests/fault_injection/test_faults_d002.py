@@ -1,4 +1,5 @@
 """Faults A7-A9, A11 (§14) on the D002 machinery."""
+
 from __future__ import annotations
 
 from credit_auditor.audit.environment import environment_gate
@@ -10,6 +11,7 @@ from credit_auditor.worlds.d002_shared_logits import generate_problem_focal
 def test_A7_split_overlap_detected(tmp_path):
     """A7: calibration/test seed overlap -> split invalid (runner refuses)."""
     from credit_auditor import runner
+
     rows = [{"problem_id": "x", "seed": 1}]
     cal = tmp_path / "d002_calibration.json"
     test = tmp_path / "d002_test.json"
@@ -26,6 +28,7 @@ def test_A8_test_time_reselection_refused(tmp_path):
     """A8: test phase without the frozen selection -> refused."""
     from credit_auditor import runner
     from credit_auditor.experiments import d002 as d002_exp
+
     d002_exp.register()
     try:
         runner.run(
@@ -60,6 +63,7 @@ def test_A9c_diverse_widths_pass():
 def test_A11_noop_alternative_detected():
     """A11: an alternative that never changes reward is a no-op."""
     from credit_auditor.worlds.bernoulli_sequence import BernoulliSequenceMDP
+
     world = BernoulliSequenceMDP(
         probabilities=(0.5, 0.5),
         rewards={(0, 0): 1.0, (0, 1): 1.0, (1, 0): 2.0, (1, 1): 2.0},
@@ -70,11 +74,14 @@ def test_A11_noop_alternative_detected():
 
 
 def test_focal_world_oracle_alignment():
+    from pathlib import Path
+
+    import numpy as np
+
     from credit_auditor import runner
     from credit_auditor.audit.target import compare_oracle
     from credit_auditor.worlds.d002_shared_logits import true_gradient
-    import numpy as np
-    from pathlib import Path
+
     p = generate_problem_focal("unit_test_problem", 424242)
     enum = runner.run_oracle_subprocess(
         Path(__file__).resolve().parents[2] / "src/credit_auditor/oracles/enumeration_oracle.py",

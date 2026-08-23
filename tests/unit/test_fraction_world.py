@@ -1,4 +1,5 @@
 """Fraction-exact world + oracle alignment tests (design §10.3)."""
+
 from __future__ import annotations
 
 from fractions import Fraction
@@ -17,10 +18,14 @@ def _frac_world() -> BernoulliFractionMDP:
     return BernoulliFractionMDP(
         probabilities=(Fraction(1, 2), Fraction(1, 3), Fraction(3, 4)),
         rewards={
-            (0, 0, 0): Fraction(1, 3), (0, 0, 1): Fraction(2, 5),
-            (0, 1, 0): Fraction(1, 7), (0, 1, 1): Fraction(3, 8),
-            (1, 0, 0): Fraction(5, 6), (1, 0, 1): Fraction(1, 9),
-            (1, 1, 0): Fraction(2, 3), (1, 1, 1): Fraction(4, 7),
+            (0, 0, 0): Fraction(1, 3),
+            (0, 0, 1): Fraction(2, 5),
+            (0, 1, 0): Fraction(1, 7),
+            (0, 1, 1): Fraction(3, 8),
+            (1, 0, 0): Fraction(5, 6),
+            (1, 0, 1): Fraction(1, 9),
+            (1, 1, 0): Fraction(2, 3),
+            (1, 1, 1): Fraction(4, 7),
         },
     )
 
@@ -34,7 +39,6 @@ def test_fraction_path_probs_sum_to_one_exactly():
 def test_fraction_gradient_matches_float():
     w = _frac_world()
     g_f = [float(x) for x in w.true_gradient()]
-    wf = deterministic_world(7, 3)
     # build the float equivalent world
     probs = [float(p) for p in w.probabilities]
     rewards = {a: float(r) for a, r in w.rewards.items()}
@@ -50,7 +54,9 @@ def test_fraction_spec_roundtrip():
     # The float->Fraction conversion is deterministic and consistent with the
     # float world (the exact ARITHMETIC self-consistency is tested separately
     # by test_fraction_oracles_align_exactly*).
-    fw_float = BernoulliSequenceMDP(tuple(float(p) for p in w.probabilities), {a: float(r) for a, r in w.rewards.items()})
+    fw_float = BernoulliSequenceMDP(
+        tuple(float(p) for p in w.probabilities), {a: float(r) for a, r in w.rewards.items()}
+    )
     w2 = BernoulliFractionMDP.from_float_world(fw_float)
     g2 = [float(x) for x in w2.true_gradient()]
     np.testing.assert_allclose(g2, fw_float.true_gradient(), rtol=1e-12, atol=1e-12)
@@ -90,5 +96,9 @@ def test_fraction_oracles_align_exactly_on_seeded_worlds():
 
 def test_fraction_world_rejects_bad_probs():
     import pytest
+
     with pytest.raises(ValueError):
-        BernoulliFractionMDP(probabilities=(Fraction(1, 2), Fraction(3, 2)), rewards={(0, 0): Fraction(1), (0, 1): Fraction(1), (1, 0): Fraction(1), (1, 1): Fraction(1)})
+        BernoulliFractionMDP(
+            probabilities=(Fraction(1, 2), Fraction(3, 2)),
+            rewards={(0, 0): Fraction(1), (0, 1): Fraction(1), (1, 0): Fraction(1), (1, 1): Fraction(1)},
+        )

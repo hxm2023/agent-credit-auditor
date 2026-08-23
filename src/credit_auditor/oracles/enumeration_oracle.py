@@ -16,6 +16,7 @@ Algorithm: direct 2^H path enumeration of E[R(tau) * score(tau)] —
 deliberately the most naive route so any shared-bug risk with the primary
 path enumeration is visible. Independent process per §10.1.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -105,7 +106,7 @@ def _d002(spec):
                         r = focal["noise"] * (acts[nt[0]] - p1)
                     r += sum(focal["w"] * (2 * acts[t] - 1) for t in range(H) if t not in nt)
                 else:
-                    r = trew[f"{states[H-1]},{acts[H-1]},{states[H]}"]
+                    r = trew[f"{states[H - 1]},{acts[H - 1]},{states[H]}"]
                 for t in range(H):
                     j = pmap[t * 2 + states[t]]
                     g[j] += p * r * (acts[t] - logits[j])

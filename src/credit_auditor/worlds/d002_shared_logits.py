@@ -17,12 +17,11 @@ Semantics per §8.3.1 (new frozen seeds; no historical parity claims):
 Gradient target (3-dim, logit space):
     dJ/dtheta_j = sum over decisions (t,s) with map(t,s)=j of E[R (a_t - p_j)].
 """
+
 from __future__ import annotations
 
 import hashlib
-import math
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 
@@ -76,15 +75,15 @@ class D002Problem(ExactWorld):
                     "transition_offset": list(b.transition_offset),
                     "transition_effect": list(b.transition_effect),
                     "terminal_rewards": {f"{s},{a},{sp}": r for (s, a, sp), r in b.terminal_rewards.items()},
-                "focal_reward": b.focal_reward,
-            }
-            for b in self.buckets
-        ],
+                    "focal_reward": b.focal_reward,
+                }
+                for b in self.buckets
+            ],
         }
         return spec
 
     @classmethod
-    def from_spec(cls, spec: dict) -> "D002Problem":
+    def from_spec(cls, spec: dict) -> D002Problem:
         buckets = []
         for b in spec["buckets"]:
             buckets.append(
@@ -100,7 +99,9 @@ class D002Problem(ExactWorld):
                     focal_reward=b.get("focal_reward"),
                 )
             )
-        return cls(problem_id=spec["problem_id"], seed=spec["seed"], logits=tuple(spec["logits"]), buckets=tuple(buckets))
+        return cls(
+            problem_id=spec["problem_id"], seed=spec["seed"], logits=tuple(spec["logits"]), buckets=tuple(buckets)
+        )
 
 
 def _draw(key: str, i: int) -> float:
@@ -179,7 +180,8 @@ def focal_reward(problem: D002Problem, b: D002Bucket, actions: tuple[int, ...]) 
     (a_n1 - p(s_n1))(a_n2 - p(s_n2)) at the noise times (zero target regardless
     of p) plus small focal effects w(2a_t - 1) elsewhere. States are
     reconstructed deterministically: s_0 = initial, s_{t+1} = a_t."""
-    cfg = b.focal_reward  # type: ignore[attr-defined]
+    cfg = b.focal_reward
+    assert cfg is not None, "focal_reward() requires a focal world"
     H = b.horizon
     states = [b.initial_state]
     for t in range(H):
@@ -225,7 +227,12 @@ def generate_problem(problem_id: str, seed: int) -> D002Problem:
         initial_state = 1 if _draw(key, 600 + bi) < 0.5 else 0
         # terminal reward table with non-constant guard
         rewards: dict[tuple[int, int, int], float] = {}
-        vals = [1.0 if _draw(key, 700 + bi * 10 + (s * 4 + a * 2 + sp)) < 0.5 else 0.0 for s in (0, 1) for a in (0, 1) for sp in (0, 1)]
+        vals = [
+            1.0 if _draw(key, 700 + bi * 10 + (s * 4 + a * 2 + sp)) < 0.5 else 0.0
+            for s in (0, 1)
+            for a in (0, 1)
+            for sp in (0, 1)
+        ]
         if len(set(vals)) == 1:
             vals[-1] = 1.0 - vals[-1]
         for s in (0, 1):
@@ -264,7 +271,9 @@ def score(problem: D002Problem, b: D002Bucket, t: int, s: int, a: int) -> float:
     return float(a) - action_prob(problem, b, t, s)
 
 
-def enumerate_bucket(problem: D002Problem, b: D002Bucket) -> list[tuple[tuple[int, ...], tuple[int, ...], float, float]]:
+def enumerate_bucket(
+    problem: D002Problem, b: D002Bucket
+) -> list[tuple[tuple[int, ...], tuple[int, ...], float, float]]:
     """Exact path enumeration: (states, actions, prob, reward).
 
     Path probability includes the policy draw of each action:
@@ -282,7 +291,7 @@ def enumerate_bucket(problem: D002Problem, b: D002Bucket) -> list[tuple[tuple[in
                 s = states[t]
                 a = actions[t]
                 p_a = action_prob(problem, b, t, s)
-                p *= (p_a if a == 1 else 1.0 - p_a)
+                p *= p_a if a == 1 else 1.0 - p_a
                 p_tr = transition_prob(b, t, s, a)
                 p *= p_tr if states[t + 1] == 1 else 1.0 - p_tr
             if b.focal_reward is not None:

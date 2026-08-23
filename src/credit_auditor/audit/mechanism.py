@@ -6,6 +6,7 @@ signature and control:
   differ from the global control; all-equal widths => MECH001 collapse.
 - root aggregation: root-vs-flat results must be material (MECH002).
 """
+
 from __future__ import annotations
 
 from credit_auditor.schema import GateResult, ReasonCode

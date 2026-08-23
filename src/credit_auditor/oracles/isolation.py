@@ -4,6 +4,7 @@ The oracle modules must not import `credit_auditor.estimators` (or anything
 under `credit_auditor`) — oracle targets and estimator distributions must be
 produced by different modules with no shared code.
 """
+
 from __future__ import annotations
 
 import ast
@@ -49,9 +50,7 @@ def check_process_import_isolation(module_path: Path, python: str | None = None)
         "tops=sorted({k.split('.')[0] for k in sys.modules});"
         "print(json.dumps({'tops': tops, 'has_credit_auditor': 'credit_auditor' in tops}))"
     )
-    proc = subprocess.run(
-        [python or sys.executable, "-c", probe], capture_output=True, text=True, timeout=300
-    )
+    proc = subprocess.run([python or sys.executable, "-c", probe], capture_output=True, text=True, timeout=300)
     if proc.returncode != 0:
         return {"isolated": False, "error": proc.stderr[-2000:]}
     out = json.loads(proc.stdout.strip().splitlines()[-1])

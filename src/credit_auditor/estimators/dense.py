@@ -6,6 +6,7 @@
 - root_rloo_distribution(n=2): leave-one-out over 2-sample sets, exact joint
   distribution (ordered pairs with replacement); g = 0.5[(R1-R2)s1 + (R2-R1)s2]
 """
+
 from __future__ import annotations
 
 from credit_auditor.worlds.base import WeightedVector

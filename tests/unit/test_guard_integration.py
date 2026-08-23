@@ -1,8 +1,8 @@
 """GRPO-Guard real-trajectory integration tests (§25): real envelopes build
 valid bundles; tampered/invalid envelopes fail closed; no write-back."""
+
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -12,7 +12,6 @@ from credit_auditor.adapters.guard_integration import (
     load_real_envelope,
     summarize_bundle,
 )
-from credit_auditor.adapters.grpo_guard_envelope import validate_guard_envelope
 
 FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "guard_envelopes"
 
@@ -73,7 +72,7 @@ def test_bundle_summary_traceable():
 
 
 def test_no_write_back_api():
-    import inspect
     from credit_auditor.adapters import guard_integration as gi
+
     public = [n for n in dir(gi) if not n.startswith("_")]
     assert not any("write" in n.lower() or "publish" in n.lower() for n in public)

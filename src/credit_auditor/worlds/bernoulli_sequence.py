@@ -7,10 +7,11 @@ Score function gradient wrt logit theta_t: (a_t - p_t).
     J(theta) = sum_tau P(tau) R(tau)
     dJ/dtheta_t = E[ R(tau) * (a_t - p_t) ]          (§5.1, §8.1)
 """
+
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 import numpy as np
 
@@ -80,6 +81,7 @@ class BernoulliSequenceMDP(ExactWorld):
 
     def to_spec(self) -> dict:
         from credit_auditor.worlds.base import reward_map_to_spec
+
         return {
             "world": "bernoulli_sequence_mdp",
             "probabilities": list(self.probabilities),
@@ -87,8 +89,9 @@ class BernoulliSequenceMDP(ExactWorld):
         }
 
     @classmethod
-    def from_spec(cls, spec: dict) -> "BernoulliSequenceMDP":
+    def from_spec(cls, spec: dict) -> BernoulliSequenceMDP:
         from credit_auditor.worlds.base import reward_map_from_spec
+
         return cls(
             probabilities=tuple(float(x) for x in spec["probabilities"]),
             rewards=reward_map_from_spec(spec["rewards"]),

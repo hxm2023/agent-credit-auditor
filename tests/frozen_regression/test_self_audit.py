@@ -1,4 +1,5 @@
 """Self-audit frozen regression: all fault types must keep TPR=1.0, FPR=0.0."""
+
 from __future__ import annotations
 
 import json

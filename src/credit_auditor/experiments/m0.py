@@ -10,6 +10,7 @@ Pre-registered semantic cases:
 Designed-case world constants are FROZEN below; their specs are hashed into the
 run manifest. All numbers are new; legacy counts (144/202 etc.) never appear.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,24 +20,20 @@ import numpy as np
 
 from credit_auditor import runner
 from credit_auditor.audit import environment as env_audit
-from credit_auditor.audit.sampling import support_gate
 from credit_auditor.audit.target import compare_oracle, retention_gate, target_gate
 from credit_auditor.canonical import sha256_json
 from credit_auditor.estimands import full_score, local_decision, root_marginal
 from credit_auditor.estimators import bpo_like, dense, hh_ht, sibling
 from credit_auditor.oracles.isolation import check_import_isolation
 from credit_auditor.schema import (
+    AuditDecision,
     ClaimDecision,
     ClaimStatus,
-    EstimandSpec,
-    EstimatorSpec,
     GateResult,
     HeadlineDecision,
     ReasonCode,
-    SamplingSpec,
-    AuditDecision,
 )
-from credit_auditor.stats import ExactMoments, exact_moments, fixed_budget_mse
+from credit_auditor.stats import exact_moments, fixed_budget_mse
 from credit_auditor.worlds.base import WeightedVector
 from credit_auditor.worlds.bernoulli_sequence import BernoulliSequenceMDP, deterministic_world
 
@@ -98,7 +95,9 @@ def truncated_world() -> BernoulliSequenceMDP:
 
 
 def shared_logit_design_case() -> dict:
-    world = root_marginal.shared_logit_world(seed=DESIGNED_WORLD_SEEDS["shared_logit_predictable_width"], shared_times=(0, 1, 2), horizon=3)
+    world = root_marginal.shared_logit_world(
+        seed=DESIGNED_WORLD_SEEDS["shared_logit_predictable_width"], shared_times=(0, 1, 2), horizon=3
+    )
     shared_times = (0, 1, 2)
     target = root_marginal.root_marginal_gradient(world, shared_times)
     flat = root_marginal.flat_leaf_average(world, shared_times)
@@ -125,7 +124,15 @@ def _moment_rows(world: BernoulliSequenceMDP, target: np.ndarray, tolerance: dic
     rows: list[dict] = []
     H = world.horizon
 
-    def add(name: str, dist: list[WeightedVector], estimand_id: str, claimed: str, sig: dict, q: tuple[float, ...] | None = None, extra_gates: list[GateResult] | None = None) -> None:
+    def add(
+        name: str,
+        dist: list[WeightedVector],
+        estimand_id: str,
+        claimed: str,
+        sig: dict,
+        q: tuple[float, ...] | None = None,
+        extra_gates: list[GateResult] | None = None,
+    ) -> None:
         m = exact_moments(dist, target)
         g = target_gate(m, tolerance, sig, claimed, estimand_id)
         gates = [g] + (extra_gates or [])
@@ -143,14 +150,34 @@ def _moment_rows(world: BernoulliSequenceMDP, target: np.ndarray, tolerance: dic
             }
         )
 
-    tol = tolerance
-    add("dense", dense.dense_distribution(world), "full_score_gradient", "full_score_gradient", dense.mechanism_signature())
-    add("dense_optimal_constant", dense.dense_optimal_constant_distribution(world), "full_score_gradient", "full_score_gradient", dense.mechanism_signature())
-    add("uniform_hh", hh_ht.uniform_hh_distribution(world), "full_score_gradient", "full_score_gradient", hh_ht.mechanism_signature(), q=tuple([1.0 / H] * H))
+    add(
+        "dense",
+        dense.dense_distribution(world),
+        "full_score_gradient",
+        "full_score_gradient",
+        dense.mechanism_signature(),
+    )
+    add(
+        "dense_optimal_constant",
+        dense.dense_optimal_constant_distribution(world),
+        "full_score_gradient",
+        "full_score_gradient",
+        dense.mechanism_signature(),
+    )
+    add(
+        "uniform_hh",
+        hh_ht.uniform_hh_distribution(world),
+        "full_score_gradient",
+        "full_score_gradient",
+        hh_ht.mechanism_signature(),
+        q=tuple([1.0 / H] * H),
+    )
     t_mid = H // 2
     local_target = local_decision.target(world, t_mid)
     m_local = exact_moments(sibling.local_sibling_distribution(world, t_mid), local_target)
-    g_local = target_gate(m_local, tolerance, sibling.mechanism_signature_local(), "local_decision_gradient", "local_decision_gradient")
+    g_local = target_gate(
+        m_local, tolerance, sibling.mechanism_signature_local(), "local_decision_gradient", "local_decision_gradient"
+    )
     rows.append(
         {
             "estimator": "local_sibling_local_estimand",
@@ -164,9 +191,27 @@ def _moment_rows(world: BernoulliSequenceMDP, target: np.ndarray, tolerance: dic
             "gates": [g_local.model_dump()],
         }
     )
-    add("local_sibling_as_full", sibling.local_sibling_distribution(world, t_mid), "full_score_gradient", "full_score_gradient", sibling.mechanism_signature_local())
-    add("propagated_sibling", sibling.propagated_sibling_distribution(world, t_mid), "full_score_gradient", "full_score_gradient", sibling.mechanism_signature_propagated())
-    add("bpo_like", bpo_like.bpo_like_distribution(world), "full_score_gradient", "full_score_gradient", bpo_like.mechanism_signature())
+    add(
+        "local_sibling_as_full",
+        sibling.local_sibling_distribution(world, t_mid),
+        "full_score_gradient",
+        "full_score_gradient",
+        sibling.mechanism_signature_local(),
+    )
+    add(
+        "propagated_sibling",
+        sibling.propagated_sibling_distribution(world, t_mid),
+        "full_score_gradient",
+        "full_score_gradient",
+        sibling.mechanism_signature_propagated(),
+    )
+    add(
+        "bpo_like",
+        bpo_like.bpo_like_distribution(world),
+        "full_score_gradient",
+        "full_score_gradient",
+        bpo_like.mechanism_signature(),
+    )
     return rows
 
 
@@ -224,8 +269,16 @@ def _run_oracle_pair(world: BernoulliSequenceMDP) -> dict:
 
 
 def run_m0(ctx: runner.RunContext) -> runner.RunResult:
-    tol = {"bias_rel": ctx.protocol.tolerances.get("bias_rel", 1e-9), "bias_abs": ctx.protocol.tolerances.get("bias_abs", 1e-12)}
-    results: dict = {"mode": "docs_only_semantic", "protocol": ctx.protocol.protocol_id, "problems": [], "designed_cases": []}
+    tol = {
+        "bias_rel": ctx.protocol.tolerances.get("bias_rel", 1e-9),
+        "bias_abs": ctx.protocol.tolerances.get("bias_abs", 1e-12),
+    }
+    results: dict = {
+        "mode": "docs_only_semantic",
+        "protocol": ctx.protocol.protocol_id,
+        "problems": [],
+        "designed_cases": [],
+    }
     gate_results: list[GateResult] = []
 
     # ---- 12 frozen problems ----
@@ -251,9 +304,13 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
             }
         )
         if env["status"] != "pass":
-            gate_results.append(GateResult(gate="environment", status="fail", reason_codes=[ReasonCode.E001_ALTERNATIVE_NOOP]))
+            gate_results.append(
+                GateResult(gate="environment", status="fail", reason_codes=[ReasonCode.E001_ALTERNATIVE_NOOP])
+            )
         if not (oracle["oracle_enumeration_match"] and oracle["oracle_bellman_match"]):
-            gate_results.append(GateResult(gate="independent_oracle", status="fail", reason_codes=[ReasonCode.E002_ORACLE_MISMATCH]))
+            gate_results.append(
+                GateResult(gate="independent_oracle", status="fail", reason_codes=[ReasonCode.E002_ORACLE_MISMATCH])
+            )
 
     # ---- designed cases ----
     # bpo_prefix_propagation
@@ -287,9 +344,11 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
     target_full2 = full_score.target(w_full2)
     m_trunc = exact_moments(dense.dense_distribution(w_trunc), target_full2)
     g_trunc = target_gate(
-        m_trunc, tol,
+        m_trunc,
+        tol,
         {"estimator_family": "sibling", "contrast_source": "truncated_continuation", "updated_coordinates": "all"},
-        claimed_estimand="full_score_gradient", estimand_id="full_score_gradient",
+        claimed_estimand="full_score_gradient",
+        estimand_id="full_score_gradient",
     )
     results["designed_cases"].append(
         {
@@ -323,10 +382,23 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
             "budget": budget,
             "dense": {"mse_at_budget": m_d.mse_at_budget, "n_cycles": m_d.n_cycles, "bias_sq": m_d.bias_sq},
             "uniform_hh": {"mse_at_budget": m_hh.mse_at_budget, "n_cycles": m_hh.n_cycles, "bias_sq": m_hh.bias_sq},
-            "paired_sibling": {"mse_at_budget": m_paired.mse_at_budget, "n_cycles": m_paired.n_cycles, "bias_sq": m_paired.bias_sq, "cost": cost_paired},
+            "paired_sibling": {
+                "mse_at_budget": m_paired.mse_at_budget,
+                "n_cycles": m_paired.n_cycles,
+                "bias_sq": m_paired.bias_sq,
+                "cost": cost_paired,
+            },
             "uncoupled_control": {"mse_at_budget": m_uncoupled.mse_at_budget, "bias_sq": m_uncoupled.bias_sq},
-            "narrow_positive": bool(m_paired.mse_at_budget is not None and m_d.mse_at_budget is not None and m_paired.mse_at_budget < m_d.mse_at_budget),
-            "mechanism_control_passes": bool(m_uncoupled.mse_at_budget is not None and m_uncoupled.mse_at_budget > m_d.mse_at_budget),
+            "narrow_positive": bool(
+                m_paired.mse_at_budget is not None
+                and m_d.mse_at_budget is not None
+                and m_paired.mse_at_budget < m_d.mse_at_budget
+            ),
+            "mechanism_control_passes": bool(
+                m_uncoupled.mse_at_budget is not None
+                and m_d.mse_at_budget is not None
+                and m_uncoupled.mse_at_budget > m_d.mse_at_budget
+            ),
         }
     )
 
@@ -336,10 +408,11 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
 
     # ---- claims ----
     dense_ok = all(
-        r["estimator"] != "dense" or r["gate_status"] == "pass"
-        for p in results["problems"] for r in p["estimators"]
+        r["estimator"] != "dense" or r["gate_status"] == "pass" for p in results["problems"] for r in p["estimators"]
     )
-    oracle_ok = all(p["oracle"]["oracle_enumeration_match"] and p["oracle"]["oracle_bellman_match"] for p in results["problems"])
+    oracle_ok = all(
+        p["oracle"]["oracle_enumeration_match"] and p["oracle"]["oracle_bellman_match"] for p in results["problems"]
+    )
     env_ok = all(p["environment_gate"]["status"] == "pass" for p in results["problems"])
     fraction_exact_ok = bool(frac_check["all_exact"])
     claims = [
@@ -363,14 +436,20 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
             claim_text="paired-replay branching wins matched-budget MSE on the frozen focal world",
             status=ClaimStatus.PASS if results["designed_cases"][-1]["narrow_positive"] else ClaimStatus.FAIL,
             required_gates=["target_identity", "independent_oracle", "matched_cost", "mechanism"],
-            claim_ceiling={"allowed": ["narrow synthetic positive on frozen designed world"], "forbidden": ["general branching superiority", "adaptive credit assignment"]},
+            claim_ceiling={
+                "allowed": ["narrow synthetic positive on frozen designed world"],
+                "forbidden": ["general branching superiority", "adaptive credit assignment"],
+            },
         ),
         ClaimDecision(
             claim_id="fraction_exact_oracle_alignment",
             claim_text="Fraction-exact primary and both Fraction oracles agree EXACTLY (mismatch == 0) on all frozen problems",
             status=ClaimStatus.PASS if fraction_exact_ok else ClaimStatus.FAIL,
             required_gates=["independent_oracle"],
-            claim_ceiling={"allowed": ["exact finite-MDP target verification on frozen rational worlds"], "forbidden": ["formality beyond the enumerated worlds", "LLM-agent utility"]},
+            claim_ceiling={
+                "allowed": ["exact finite-MDP target verification on frozen rational worlds"],
+                "forbidden": ["formality beyond the enumerated worlds", "LLM-agent utility"],
+            },
         ),
     ]
     integrity = ClaimStatus.PASS
@@ -379,16 +458,30 @@ def run_m0(ctx: runner.RunContext) -> runner.RunResult:
     decision = AuditDecision(
         experiment_integrity=integrity,
         claims=claims,
-        headline_decision=HeadlineDecision(proposed_new_method_claim=ClaimStatus.PASS, retained_narrow_claim="paired_replay_matched_cost_positive"),
+        headline_decision=HeadlineDecision(
+            proposed_new_method_claim=ClaimStatus.PASS, retained_narrow_claim="paired_replay_matched_cost_positive"
+        ),
     )
 
     report = _render_report(results, decision)
     return runner.RunResult(
-        result={"status": "ok", "problem_count": len(results["problems"]), "designed_cases": [c["case"] for c in results["designed_cases"]], "fraction_exact_check": frac_check},
-        oracle_result={"oracle_ok": True, "oracle_import_isolation": [check_import_isolation(ORACLE_DIR / "enumeration_oracle.py"), check_import_isolation(ORACLE_DIR / "bellman_oracle.py")]},
+        result={
+            "status": "ok",
+            "problem_count": len(results["problems"]),
+            "designed_cases": [c["case"] for c in results["designed_cases"]],
+            "fraction_exact_check": frac_check,
+        },
+        oracle_result={
+            "oracle_ok": True,
+            "oracle_import_isolation": [
+                check_import_isolation(ORACLE_DIR / "enumeration_oracle.py"),
+                check_import_isolation(ORACLE_DIR / "bellman_oracle.py"),
+            ],
+        },
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": results["problems"], "designed_cases": results["designed_cases"]},
+        manifest_extra={"designed_cases": results["designed_cases"]},
+        raw_rows=results["problems"],
     )
 
 
@@ -404,7 +497,9 @@ def _render_report(results: dict, decision: AuditDecision) -> str:
         "## Claim decisions",
     ]
     for claim in decision.claims:
-        lines.append(f"- `{claim.claim_id}`: **{claim.status.value}** ({', '.join(rc.value for rc in claim.reason_codes) or 'no reason codes'})")
+        lines.append(
+            f"- `{claim.claim_id}`: **{claim.status.value}** ({', '.join(rc.value for rc in claim.reason_codes) or 'no reason codes'})"
+        )
     lines.append("")
     lines.append("## designed-case detail")
     for case in results["designed_cases"]:
@@ -412,7 +507,9 @@ def _render_report(results: dict, decision: AuditDecision) -> str:
     lines.append("")
     lines.append("## Honesty notes")
     lines.append("- docs_only_semantic: numbers are new; legacy 144/202, 24.81x, 0.694 are incident background only.")
-    lines.append("- The matched-cost positive is a FROZEN designed world; the paired-replay mechanism is the cause (uncoupled control loses).")
+    lines.append(
+        "- The matched-cost positive is a FROZEN designed world; the paired-replay mechanism is the cause (uncoupled control loses)."
+    )
     lines.append("- No claim about LLM-agent utility is made.")
     return "\n".join(lines)
 

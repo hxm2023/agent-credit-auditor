@@ -6,6 +6,7 @@ coupled separation. CLAIM STATUS: SUPPORT_ONLY — formally sound, not a new
 theory (classical coupled robust advantage / cross-world partial
 identification equivalence).
 """
+
 from __future__ import annotations
 
 from fractions import Fraction
@@ -13,15 +14,13 @@ from pathlib import Path
 
 from credit_auditor import runner
 from credit_auditor.schema import (
+    AuditDecision,
     ClaimDecision,
     ClaimStatus,
     HeadlineDecision,
-    ReasonCode,
-    AuditDecision,
 )
 from credit_auditor.worlds.continuation import (
     ContinuationPolicy,
-    action_value,
     coordinate_box_vs_coupled,
     family_action_values,
     fiber_signs,
@@ -71,16 +70,24 @@ def _u1_case() -> dict:
 def _u2u3_case() -> dict:
     """Continuation family: 2-step binary chain, Fraction arithmetic."""
     reward = {
-        (0, 0, 0): Fraction(0), (0, 0, 1): Fraction(1, 3),
-        (0, 1, 0): Fraction(1, 3), (0, 1, 1): Fraction(0),
-        (1, 0, 0): Fraction(1, 4), (1, 0, 1): Fraction(1, 4),
-        (1, 1, 0): Fraction(0), (1, 1, 1): Fraction(1, 2),
+        (0, 0, 0): Fraction(0),
+        (0, 0, 1): Fraction(1, 3),
+        (0, 1, 0): Fraction(1, 3),
+        (0, 1, 1): Fraction(0),
+        (1, 0, 0): Fraction(1, 4),
+        (1, 0, 1): Fraction(1, 4),
+        (1, 1, 0): Fraction(0),
+        (1, 1, 1): Fraction(1, 2),
     }
     transitions = {
-        (0, 0, 0): Fraction(1, 3), (0, 0, 1): Fraction(2, 3),
-        (0, 1, 0): Fraction(3, 4), (0, 1, 1): Fraction(1, 4),
-        (1, 0, 0): Fraction(1, 2), (1, 0, 1): Fraction(1, 2),
-        (1, 1, 0): Fraction(1, 5), (1, 1, 1): Fraction(4, 5),
+        (0, 0, 0): Fraction(1, 3),
+        (0, 0, 1): Fraction(2, 3),
+        (0, 1, 0): Fraction(3, 4),
+        (0, 1, 1): Fraction(1, 4),
+        (1, 0, 0): Fraction(1, 2),
+        (1, 0, 1): Fraction(1, 2),
+        (1, 1, 0): Fraction(1, 5),
+        (1, 1, 1): Fraction(4, 5),
     }
     policies = [
         ContinuationPolicy({(1, 0): Fraction(1, 4), (1, 1): Fraction(3, 4)}),
@@ -116,7 +123,10 @@ def run_continuation(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.SUPPORT_ONLY,
             required_gates=["integrity"],
             reason_codes=[],
-            claim_ceiling={"allowed": ["formal identifiability-scope diagnostic on the frozen universe"], "forbidden": ["new partial-identification theory", "real Agent utility"]},
+            claim_ceiling={
+                "allowed": ["formal identifiability-scope diagnostic on the frozen universe"],
+                "forbidden": ["new partial-identification theory", "real Agent utility"],
+            },
         ),
         ClaimDecision(
             claim_id="u2u3_stability_reported",
@@ -124,7 +134,10 @@ def run_continuation(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.SUPPORT_ONLY,
             required_gates=["integrity"],
             reason_codes=[],
-            claim_ceiling={"allowed": ["exact diagnostics over the frozen continuation family"], "forbidden": ["extrapolation to arbitrary MDPs or real tasks"]},
+            claim_ceiling={
+                "allowed": ["exact diagnostics over the frozen continuation family"],
+                "forbidden": ["extrapolation to arbitrary MDPs or real tasks"],
+            },
         ),
     ]
     decision = AuditDecision(
@@ -165,7 +178,7 @@ def run_continuation(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": True},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": [{"case": "u1", **u1}, {"case": "u2u3", **u2u3}]},
+        raw_rows=[{"case": "u1", **u1}, {"case": "u2u3", **u2u3}],
     )
 
 

@@ -1,5 +1,6 @@
 """Protocol/evidence tests (§17.3): frozen configs, seed disjointness,
 no-overwrite, config-hash lineage, failed runs in index."""
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,10 @@ def test_frozen_protocol_hashes_are_stable():
     """Frozen config change must trigger lineage mismatch — snapshot the hashes
     (first freeze 2026-08-22). Any change requires a decision-logged protocol
     version bump, never an in-place edit."""
-    hashes = {f.name: sha256_json(runner.validate_protocol(f).model_dump(mode="json")) for f in sorted(PROTOCOLS.glob("*.json"))}
+    hashes = {
+        f.name: sha256_json(runner.validate_protocol(f).model_dump(mode="json"))
+        for f in sorted(PROTOCOLS.glob("*.json"))
+    }
     assert hashes == {
         "continuation_scale_large_v1.json": "b236f66a13c35badad435b8ce71a42f8dcad3ffb453a956666152eb72d1bf8eb",
         "self_audit_v1.json": "f2363d115a8e2d3a455dc255eef7055e1dcbe08b3cbe4438c4be6914f70022b7",
@@ -130,6 +134,7 @@ def test_published_package_hashes_match(tmp_path: Path):
     assert "run_manifest.json" in sums
     assert "REPORT.md" in sums
     from credit_auditor.canonical import sha256_file
+
     for rel, h in sums.items():
         assert sha256_file(out / rel) == h
 

@@ -1,5 +1,6 @@
 """V001 frozen regression: expected-fail must stay a stable FAIL while the
 calibration-accuracy claim stays PASS."""
+
 from __future__ import annotations
 
 import json
@@ -7,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.full
-
 from credit_auditor import runner
 from credit_auditor.experiments import v001 as v001_exp
+
+pytestmark = pytest.mark.full
 
 ROOT = Path(__file__).resolve().parents[2]
 

@@ -11,9 +11,10 @@ v0.1.1 scope: schema + fail-closed validation + tests. No Guard server or GPU
 is required; a real v0.2 smoke additionally needs GRPO-Guard's published
 schema package and an allowed envelope (CLAUDE.md/§20.2 gate).
 """
+
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
 from credit_auditor.schema import CanonicalModel
 
@@ -56,7 +57,7 @@ class CreditAuditBundle(CanonicalModel):
     target_policy_scoring_event: GuardEnvelopeRef | None = None
 
     @model_validator(mode="after")
-    def _refs_have_hashes(self) -> "CreditAuditBundle":
+    def _refs_have_hashes(self) -> CreditAuditBundle:
         """§25: every Guard reference must carry a sha256; a bundle without
         one is invalid."""
         for ref in (

@@ -4,6 +4,7 @@ Checks: claimed estimand defined; estimator expectation == target within
 tolerance; local credit NOT propagated to shared prefix; continuation policy
 consistent; clipped/unclipped scope not conflated.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -30,7 +31,6 @@ def target_gate(
     """Return the T-gate result for one (estimator, estimand) pair."""
     rel = tolerance.get("bias_rel", 1e-9)
     abs_tol = tolerance.get("bias_abs", 1e-12)
-    near_zero = tolerance.get("near_zero_target_abs", 1e-8)
     max_abs_target = float(np.max(np.abs(moments.target))) if moments.target.size else 0.0
     scale = max(max_abs_target, 1.0)
     bias_ok = moments.max_abs_bias() <= max(abs_tol, rel * scale)

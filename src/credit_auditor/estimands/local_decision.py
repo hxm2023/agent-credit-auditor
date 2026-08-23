@@ -7,6 +7,7 @@ which equals dJ/dtheta_t (terminal-reward case). The estimator under test may
 claim either the full vector (sparse at other coordinates -> bias) or the
 single coordinate (unbiased). The audit decides per claimed estimand.
 """
+
 from __future__ import annotations
 
 import numpy as np

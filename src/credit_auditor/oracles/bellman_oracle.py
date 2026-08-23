@@ -11,6 +11,7 @@ This is value-function dynamic programming; the primary side may use
 path enumeration, so a shared bug in one enumeration routine cannot
 silently pass both.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -58,8 +59,7 @@ def _d002_bellman(spec):
                         q[(t, s, a)] = e_r(t, s, a)
                     else:
                         q[(t, s, a)] = sum(
-                            (tp(t, s, a) if sp == 1 else 1 - tp(t, s, a)) * qpol.get((t + 1, sp), 0.0)
-                            for sp in (0, 1)
+                            (tp(t, s, a) if sp == 1 else 1 - tp(t, s, a)) * qpol.get((t + 1, sp), 0.0) for sp in (0, 1)
                         )
                 pa = logits[pmap[t * 2 + s]]
                 qpol[(t, s)] = pa * q[(t, s, 1)] + (1 - pa) * q[(t, s, 0)]
@@ -73,7 +73,9 @@ def _d002_bellman(spec):
                 for a in (0, 1):
                     p_tr = tp(t, s, a)
                     for sp in (0, 1):
-                        reach[(t + 1, sp)] = reach.get((t + 1, sp), 0.0) + pr * (pa if a == 1 else 1 - pa) * (p_tr if sp == 1 else 1 - p_tr)
+                        reach[(t + 1, sp)] = reach.get((t + 1, sp), 0.0) + pr * (pa if a == 1 else 1 - pa) * (
+                            p_tr if sp == 1 else 1 - p_tr
+                        )
         for t in range(H):
             for s in (0, 1):
                 j = pmap[t * 2 + s]

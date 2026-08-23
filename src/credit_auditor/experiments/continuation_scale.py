@@ -18,6 +18,7 @@ NOVELTY STATUS: CLASSICAL COUPLED/NONRECTANGULAR ROBUST ADVANTAGE +
 CROSS-WORLD PARTIAL IDENTIFICATION EQUIVALENCE — not a new theory.
 CLAIM STATUS: SUPPORT_ONLY.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -26,10 +27,10 @@ from pathlib import Path
 
 from credit_auditor import runner
 from credit_auditor.schema import (
+    AuditDecision,
     ClaimDecision,
     ClaimStatus,
     HeadlineDecision,
-    AuditDecision,
 )
 from credit_auditor.worlds.continuation import ContinuationPolicy, action_value
 
@@ -107,7 +108,14 @@ def run_continuation_scale(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.SUPPORT_ONLY,
             required_gates=["integrity"],
             reason_codes=[],
-            claim_ceiling={"allowed": ["exact family-level diagnostics on the frozen census universe"], "forbidden": ["new partial-identification theory", "extrapolation to arbitrary MDPs or real tasks", "legacy 400/120000 counts as reproduced"]},
+            claim_ceiling={
+                "allowed": ["exact family-level diagnostics on the frozen census universe"],
+                "forbidden": [
+                    "new partial-identification theory",
+                    "extrapolation to arbitrary MDPs or real tasks",
+                    "legacy 400/120000 counts as reproduced",
+                ],
+            },
         )
     ]
     decision = AuditDecision(
@@ -140,7 +148,7 @@ def run_continuation_scale(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": True},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": rows},
+        raw_rows=rows,
     )
 
 

@@ -10,6 +10,7 @@ functional-dependency / hitting-set problem.
 Legacy counts (390625 / 390112 / 3.81% / 4.21%, 198.63 CPU s) are incident
 background only; the numbers below are new.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -18,10 +19,10 @@ from pathlib import Path
 
 from credit_auditor import runner
 from credit_auditor.schema import (
+    AuditDecision,
     ClaimDecision,
     ClaimStatus,
     HeadlineDecision,
-    AuditDecision,
 )
 from credit_auditor.worlds.minimal_logging import ALL_BITS, default_universe, minimal_schemas
 
@@ -29,7 +30,10 @@ ORACLE_DIR = Path(__file__).resolve().parents[1] / "oracles"
 
 ROWS = tuple((b0, b1, b2) for b0 in (0, 1) for b1 in (0, 1) for b2 in (0, 1))
 LABEL_VALUES = (0, 1, 2, 3)
-SIGN = lambda v: v % 2  # sign coarsening: even -> 0, odd -> 1
+
+
+def _sign(v: int) -> int:
+    return v % 2  # sign coarsening: even -> 0, odd -> 1
 
 
 def _separates(pair: tuple[int, int], schema: tuple[int, ...]) -> bool:
@@ -39,6 +43,7 @@ def _separates(pair: tuple[int, int], schema: tuple[int, ...]) -> bool:
 
 def _assignment_stats(labels: tuple[int, ...], sign_mode: bool) -> tuple[bool, int]:
     """(eligible, minimal_schema_size) for one label assignment."""
+
     def diff(i: int, j: int) -> bool:
         a, b = labels[i], labels[j]
         return (a % 2 != b % 2) if sign_mode else (a != b)
@@ -81,7 +86,10 @@ def run_minimal_logging(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.SUPPORT_ONLY,
             required_gates=["integrity"],
             reason_codes=[],
-            claim_ceiling={"allowed": ["telemetry-schema teaching diagnostic"], "forbidden": ["new minimal-sensing theorem", "real Agent utility"]},
+            claim_ceiling={
+                "allowed": ["telemetry-schema teaching diagnostic"],
+                "forbidden": ["new minimal-sensing theorem", "real Agent utility"],
+            },
         )
     ]
     decision = AuditDecision(
@@ -126,7 +134,15 @@ def run_minimal_logging(ctx: runner.RunContext) -> runner.RunResult:
         oracle_result={"oracle_ok": True},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": [{"point_total": point_total, "point_eligible": point_eligible, "sign_eligible": sign_eligible, "point_min_sizes": point_min_sizes, "sign_min_sizes": sign_min_sizes}]},
+        raw_rows=[
+            {
+                "point_total": point_total,
+                "point_eligible": point_eligible,
+                "sign_eligible": sign_eligible,
+                "point_min_sizes": point_min_sizes,
+                "sign_min_sizes": sign_min_sizes,
+            }
+        ],
     )
 
 

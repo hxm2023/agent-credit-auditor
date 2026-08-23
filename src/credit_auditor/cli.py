@@ -1,4 +1,5 @@
 """CLI (design §15.1)."""
+
 from __future__ import annotations
 
 import argparse
@@ -38,7 +39,9 @@ def main(argv: list[str] | None = None) -> int:
     p_audit = sub.add_parser("audit", help="audit an artifact directory")
     p_audit.add_argument("--artifact-dir", required=True, type=Path)
 
-    p_guard = sub.add_parser("validate-guard-envelope", help="fail-closed validation of a GRPO-Guard envelope (design 25)")
+    p_guard = sub.add_parser(
+        "validate-guard-envelope", help="fail-closed validation of a GRPO-Guard envelope (design 25)"
+    )
     p_guard.add_argument("--envelope", required=True, type=Path)
 
     p_legacy = sub.add_parser("validate-legacy-bundle", help="validate a legacy migration bundle (design 13.6)")
@@ -48,14 +51,18 @@ def main(argv: list[str] | None = None) -> int:
     p_report = sub.add_parser("report", help="build release report from artifact root")
     p_report.add_argument("--artifact-root", required=True, type=Path)
     p_report.add_argument("--output", type=Path, default=None)
-    p_report.add_argument("--skip-tests", action="store_true", help="skip the embedded full test-suite run for TEST_LOG.txt (fast)")
+    p_report.add_argument(
+        "--skip-tests", action="store_true", help="skip the embedded full test-suite run for TEST_LOG.txt (fast)"
+    )
 
     args = parser.parse_args(argv)
 
     if args.command == "validate-protocol":
         proto = runner.validate_protocol(args.protocol)
-        print(f"OK {args.protocol} -> protocol_id={proto.protocol_id} {proto.protocol_version} "
-              f"mode={proto.reconstruction_mode}")
+        print(
+            f"OK {args.protocol} -> protocol_id={proto.protocol_id} {proto.protocol_version} "
+            f"mode={proto.reconstruction_mode}"
+        )
         return 0
 
     if args.command == "run":
@@ -72,13 +79,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "audit":
         from credit_auditor.audit.provenance import audit_artifact_dir
-        from credit_auditor.schema import ClaimStatus
 
         decision = audit_artifact_dir(args.artifact_dir)
         gd_path = args.artifact_dir / "gate_decision.json"
         claims: list[str] = []
         if gd_path.is_file():
             import json as _json
+
             gd = _json.loads(gd_path.read_text(encoding="utf-8"))
             for c in gd.get("claims", []):
                 ceiling = c.get("claim_ceiling", {}).get("forbidden", [])
@@ -117,6 +124,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "report":
         from credit_auditor.report import build_release_report
+
         out = build_release_report(args.artifact_root, args.output, run_tests=not args.skip_tests)
         print(f"report written: {out}")
         return 0

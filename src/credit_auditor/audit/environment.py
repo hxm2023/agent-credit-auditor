@@ -7,6 +7,7 @@ Pre-gate checks:
 Non-degeneracy is checked BEFORE estimator gates so that a degenerate world can
 never be used to claim an estimator works.
 """
+
 from __future__ import annotations
 
 from credit_auditor.worlds.bernoulli_sequence import BernoulliSequenceMDP
@@ -33,7 +34,6 @@ def group_variance_zero(world: BernoulliSequenceMDP, group: tuple[int, ...]) -> 
     the E001 no-op check, since a lone near-zero effect can be legitimate."""
     q = world.q_values()
     vals: list[float] = []
-    H = world.horizon
     for t in group:
         for bits in range(1 << t):
             h = tuple((bits >> (t - 1 - tt)) & 1 for tt in range(t))

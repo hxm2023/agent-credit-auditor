@@ -8,11 +8,12 @@ so the self-contained oracle processes can also compute exactly.
 Float64 enumeration remains the documented path for larger worlds; the
 Fraction layer is the exact cross-validation for the designed cases.
 """
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Mapping
 
 from credit_auditor.worlds.base import ExactWorld
 
@@ -74,7 +75,7 @@ class BernoulliFractionMDP(ExactWorld):
         }
 
     @classmethod
-    def from_float_world(cls, world) -> "BernoulliFractionMDP":
+    def from_float_world(cls, world) -> BernoulliFractionMDP:
         """Exact conversion of a float BernoulliSequenceMDP via its rational
         origin (seeded worlds use dyadic rationals, exactly representable)."""
         probs = tuple(Fraction(world.probabilities[t]).limit_denominator(2**60) for t in range(world.horizon))

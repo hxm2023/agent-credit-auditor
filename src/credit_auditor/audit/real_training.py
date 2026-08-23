@@ -13,6 +13,7 @@ This is not a protocol pack (real data is not frozen); it is the
 real-scenario usage tool answering "has this project been used on a real
 full-model training run?".
 """
+
 from __future__ import annotations
 
 import json
@@ -37,12 +38,20 @@ def audit_sync_calls(smoke_result: dict) -> dict:
 
 def audit_policy_manifest(pm: dict) -> dict:
     """Policy traceability: every required field present, weights hashed."""
-    required = ["manifest_id", "model_id", "policy_version", "weights",
-                "checkpoint_manifest_sha256", "tokenizer_sha256", "code_commit_sha"]
+    required = [
+        "manifest_id",
+        "model_id",
+        "policy_version",
+        "weights",
+        "checkpoint_manifest_sha256",
+        "tokenizer_sha256",
+        "code_commit_sha",
+    ]
     missing = [f for f in required if not pm.get(f)]
     weights = pm.get("weights", [])
-    bad_weights = [w.get("uri") for w in weights
-                   if not (isinstance(w.get("sha256"), str) and len(w.get("sha256", "")) == 64)]
+    bad_weights = [
+        w.get("uri") for w in weights if not (isinstance(w.get("sha256"), str) and len(w.get("sha256", "")) == 64)
+    ]
     return {
         "missing_fields": missing,
         "weights": len(weights),
@@ -67,7 +76,9 @@ def audit_real_training_dir(data_dir: Path) -> dict:
         if out["sync"]["static_rollout_signal"]:
             findings.append("static_rollout signal: unacked TRL sync calls present")
         elif out["sync"]["sync_calls"] > 0:
-            findings.append(f"static_rollout signal clear: {out['sync']['sync_calls']}/{out['sync']['sync_calls']} sync calls acked")
+            findings.append(
+                f"static_rollout signal clear: {out['sync']['sync_calls']}/{out['sync']['sync_calls']} sync calls acked"
+            )
 
     pm = data_dir / "loop_out/policy_manifest.json"
     if pm.is_file():

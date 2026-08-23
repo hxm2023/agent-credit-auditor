@@ -6,6 +6,31 @@ on:
   pull_request:
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies (frozen lock)
+        run: uv sync --extra dev --frozen
+
+      - name: Lint (ruff, E/F/W/I gate)
+        run: uv run ruff check src/ tests/
+
+      - name: Format check (ruff format)
+        run: uv run ruff format --check src/ tests/
+
+      - name: Type check (pyright, strict on src)
+        run: uv run pyright src/
+
+      - name: Dependency audit
+        run: uv audit || true  # informational until the lock is fully auditable
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -31,8 +56,8 @@ jobs:
       - name: Fresh-clone reproduction (M0 pack via script)
         run: bash scripts/run_m0.sh artifacts/ci/M0
 
-      - name: Full test suite (release gate)
-        run: uv run pytest -q
+      - name: Full test suite + coverage (release gate, >= 85%)
+        run: uv run pytest --cov=credit_auditor --cov-fail-under=85 -q
 
       - name: Guard + legacy bundle CLI smoke
         run: |

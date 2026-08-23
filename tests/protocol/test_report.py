@@ -1,5 +1,6 @@
 """Release report builder tests (§18): result index, environment, TEST_LOG,
 failed runs enter the index."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from credit_auditor import runner, report
+from credit_auditor import report, runner
 from credit_auditor.experiments import m0 as m0_exp
 
 pytestmark = pytest.mark.release_report
@@ -17,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_release_report_builds(tmp_path):
     m0_exp.register()
-    exp = runner.run(
+    runner.run(
         protocol_path=ROOT / "configs/protocols/m0_regression_v1.json",
         output_dir=tmp_path / "artifacts" / "M0",
         seed_manifests=[ROOT / "configs/seeds/m0_problems.json"],
@@ -44,7 +45,11 @@ def test_release_report_failed_run_enters_index(tmp_path):
     proto["world_family"] = "no_such_family"
     fake = tmp_path / "nofamily.json"
     fake.write_text(json.dumps(proto), encoding="utf-8")
-    runner.run(protocol_path=fake, output_dir=tmp_path / "artifacts" / "M0_fail", seed_manifests=[ROOT / "configs/seeds/m0_problems.json"])
+    runner.run(
+        protocol_path=fake,
+        output_dir=tmp_path / "artifacts" / "M0_fail",
+        seed_manifests=[ROOT / "configs/seeds/m0_problems.json"],
+    )
     out = report.build_release_report(tmp_path / "artifacts", run_tests=False)
     index = json.loads((out / "result_index.json").read_text(encoding="utf-8"))
     entry = next(e for e in index["experiments"] if e["experiment"] == "M0_fail")

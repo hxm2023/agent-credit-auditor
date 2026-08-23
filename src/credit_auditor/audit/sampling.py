@@ -1,4 +1,5 @@
 """Sampling/support gate (design §11.2, faults A3/A4, reason codes S001-S004)."""
+
 from __future__ import annotations
 
 import numpy as np

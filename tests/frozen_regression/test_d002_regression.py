@@ -1,5 +1,6 @@
 """D002 frozen regression: the dual verdict (metric PASS + mechanism FAIL)
 must be stable; calibration/test splits are frozen and disjoint."""
+
 from __future__ import annotations
 
 import json
@@ -7,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.full
-
 from credit_auditor import runner
 from credit_auditor.experiments import d002 as d002_exp
+
+pytestmark = pytest.mark.full
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -88,6 +89,7 @@ def test_d002_tampered_selection_rejected(tmp_path):
     """A8 lineage: an edited selection (tampered widths) must be rejected by
     the self-hash check, not silently used."""
     import copy
+
     d002_exp.register()
     cal = runner.run(
         protocol_path=ROOT / "configs/protocols/d002_regression_v1.json",
@@ -127,5 +129,6 @@ def test_d002_selection_hash_stable(d002_pipeline):
     assert len(sel["selection_sha256"]) == 64
     # re-hash the published selection (canonical serialization) and compare
     from credit_auditor.canonical import sha256_json
+
     body = {k: v for k, v in sel.items() if k != "selection_sha256"}
     assert sha256_json(body) == sel["selection_sha256"]

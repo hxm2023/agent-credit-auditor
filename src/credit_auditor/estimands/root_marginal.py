@@ -9,6 +9,7 @@ For logit parameterization dp_t/dtheta = p_t(1-p_t) and the score is
 A "flat leaf average" that averages per-decision terms without the chain-rule
 sum is a different object; the audit must catch it.
 """
+
 from __future__ import annotations
 
 import numpy as np

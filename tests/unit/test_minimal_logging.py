@@ -1,4 +1,5 @@
 """Minimal telemetry universe tests (§13.5 teaching asset, §17.1)."""
+
 from __future__ import annotations
 
 from credit_auditor.worlds.minimal_logging import (

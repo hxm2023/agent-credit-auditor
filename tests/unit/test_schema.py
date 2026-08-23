@@ -1,4 +1,5 @@
 """Schema unit tests (§7)."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,6 @@ from credit_auditor.schema import (
     ClaimDecision,
     ClaimStatus,
     CostBreakdown,
-    CostSpec,
     CostTerm,
     EstimandSpec,
     EstimatorSpec,

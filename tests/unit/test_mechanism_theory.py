@@ -1,15 +1,14 @@
 """Numerical verification of the mechanism theory formulas (docs/
 mechanism_theory.md): closed forms vs exact enumeration."""
-from __future__ import annotations
 
-from fractions import Fraction
+from __future__ import annotations
 
 import numpy as np
 
 from credit_auditor.audit.mechanism import collapse_statistical_evidence
 from credit_auditor.stats import exact_moments
-from credit_auditor.worlds.bernoulli_sequence import BernoulliSequenceMDP
 from credit_auditor.worlds.base import WeightedVector
+from credit_auditor.worlds.bernoulli_sequence import BernoulliSequenceMDP
 
 
 def _focal_world(p: float, w: float, noise: float) -> BernoulliSequenceMDP:
@@ -76,7 +75,6 @@ def test_hh_amplification_1_over_q2():
     target = world.true_gradient()
     q = (0.5, 0.5)  # uniform over the 2 decisions
     dist = hh_ht.hh_distribution(world, q)
-    m = exact_moments(dist, target)
     # E[(R s_1)²] and Var(R s_1) (the conditional variance at T=1)
     e_rs1_2 = sum(pr * (world.rewards[a] * world.score(a)[1]) ** 2 for a, pr in world.all_paths())
     var_rs1 = e_rs1_2 - target[1] ** 2

@@ -7,6 +7,7 @@ target (S001 otherwise). With-replacement sampling requires the Hansen-Hurwitz
 (selection-probability) correction; without-replacement requires Horvitz-
 Thompson (inclusion-probability) correction (S003).
 """
+
 from __future__ import annotations
 
 from credit_auditor.worlds.base import WeightedVector

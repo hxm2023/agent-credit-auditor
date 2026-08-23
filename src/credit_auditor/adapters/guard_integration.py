@@ -16,6 +16,7 @@ Auditor's bundle validation, demonstrating the exact-toy -> real-toolchain
 bridge. The online envelope validation itself remains Guard's job; the
 Auditor only interprets what the envelope permits (design §25).
 """
+
 from __future__ import annotations
 
 import json
@@ -38,7 +39,7 @@ def _ref(event: dict | None, default_uri: str = "") -> GuardEnvelopeRef | None:
     return GuardEnvelopeRef(uri=event.get("uri") or default_uri, sha256=sha)
 
 
-def envelope_to_bundle(envelope: dict, pinned_schema: str = GUARD_SCHEMA) -> tuple[CreditAuditBundle, dict]:
+def envelope_to_bundle(envelope: dict, pinned_schema: str = GUARD_SCHEMA) -> tuple[CreditAuditBundle | None, dict]:
     """Build the Auditor's CreditAuditBundle from a real Guard envelope.
 
     Returns (bundle, validation) where validation is the fail-closed check
@@ -63,13 +64,13 @@ def envelope_to_bundle(envelope: dict, pinned_schema: str = GUARD_SCHEMA) -> tup
 
     bundle = CreditAuditBundle(
         guard_schema_version=pinned_schema,
-        guard_envelope_refs=[
-            GuardEnvelopeRef(uri=f"guard-envelope:{envelope.get('envelope_id')}", sha256=env_sha)
-        ],
+        guard_envelope_refs=[GuardEnvelopeRef(uri=f"guard-envelope:{envelope.get('envelope_id')}", sha256=env_sha)],
         decision_token_spans=[],
         restore_protocol_ref=None,
         branch_event_refs=[],
-        continuation_policy_manifest_refs=[_ref(envelope.get("policy_manifest"), "manifest://policy")] if envelope.get("policy_manifest") else [],
+        continuation_policy_manifest_refs=[_ref(envelope.get("policy_manifest"), "manifest://policy")]
+        if envelope.get("policy_manifest")
+        else [],
         selection_probabilities=None,
         cost_observations={},
         target_policy_scoring_event=_ref(envelope.get("generation_event"), "event://generation"),
@@ -91,6 +92,10 @@ def summarize_bundle(bundle: CreditAuditBundle, envelope_id: str) -> dict:
         "guard_schema": bundle.guard_schema_version,
         "guard_envelope_refs": [r.sha256[:12] for r in bundle.guard_envelope_refs],
         "policy_manifest_ref": [r.sha256[:12] for r in bundle.continuation_policy_manifest_refs],
-        "target_scoring_event": bundle.target_policy_scoring_event.sha256[:12] if bundle.target_policy_scoring_event else None,
-        "selection_law": "strict_on_policy" if bundle.selection_probabilities is None else bundle.selection_probabilities.law,
+        "target_scoring_event": bundle.target_policy_scoring_event.sha256[:12]
+        if bundle.target_policy_scoring_event
+        else None,
+        "selection_law": "strict_on_policy"
+        if bundle.selection_probabilities is None
+        else bundle.selection_probabilities.law,
     }

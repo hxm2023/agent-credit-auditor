@@ -8,6 +8,7 @@ experiment directory against the package format, and emits:
 - REPORT.md: claim ceilings + forbidden extrapolations + honesty notes
 Failed runs still enter the index (design §17.3).
 """
+
 from __future__ import annotations
 
 import json
@@ -16,8 +17,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from credit_auditor.audit.provenance import REQUIRED_PACKAGE_FILES, audit_artifact_dir
-from credit_auditor.canonical import atomic_write_json, atomic_write_text, sha256_file, sha256_tree
+from credit_auditor.audit.provenance import audit_artifact_dir
+from credit_auditor.canonical import atomic_write_json, atomic_write_text, sha256_tree
 
 
 def _load(path: Path) -> dict:

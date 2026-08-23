@@ -1,4 +1,5 @@
 """FULL_SCORE_GRADIENT estimand (§5.1, §5.2): E[ R(tau) * score(tau) ]."""
+
 from __future__ import annotations
 
 import numpy as np

@@ -13,6 +13,7 @@ policy (both states share a logit at each time), deterministic transitions
 (s_{t+1} = a_t), focal terminal reward with centered noise at non-adjacent
 zero-target times. All numbers are new.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,15 +28,13 @@ from credit_auditor.audit.mechanism import width_diversity_gate
 from credit_auditor.audit.target import compare_oracle
 from credit_auditor.estimators import branching
 from credit_auditor.schema import (
+    AuditDecision,
     ClaimDecision,
     ClaimStatus,
-    GateResult,
     HeadlineDecision,
     ReasonCode,
-    AuditDecision,
 )
 from credit_auditor.worlds.d002_shared_logits import (
-    BUCKET_SPECS,
     BUCKET_ORDER,
     generate_problem_focal,
     true_gradient,
@@ -67,7 +66,7 @@ def _combine(parts):
     return mean, mm
 
 
-def _envelope_mse(problem, target, budget: int) -> tuple[float, str]:
+def _envelope_mse(problem, target, budget: int) -> tuple[float | None, str]:
     parts_opt = [branching.dense_optimal_constant_moments(problem, b) for b in problem.buckets]
     parts_rloo = [branching.root_rloo_moments(problem, b) for b in problem.buckets]
     m_opt, mm_opt = _combine(parts_opt)
@@ -91,7 +90,11 @@ def _bootstrap_ratios(ratios: np.ndarray, seed_key: str, replicates: int = 10000
         rng = np.random.default_rng(int(draw(r) * 2**32))
         idx = rng.integers(0, n, size=n)
         medians[r] = np.median(ratios[idx])
-    return {"median": float(np.median(ratios)), "ci_lo": float(np.percentile(medians, 2.5)), "ci_hi": float(np.percentile(medians, 97.5))}
+    return {
+        "median": float(np.median(ratios)),
+        "ci_lo": float(np.percentile(medians, 2.5)),
+        "ci_hi": float(np.percentile(medians, 97.5)),
+    }
 
 
 def _protocol_depths(ctx: runner.RunContext) -> dict:
@@ -114,7 +117,11 @@ def _calibration(ctx: runner.RunContext) -> runner.RunResult:
         for bid in BUCKET_ORDER:
             b = next(x for x in problem.buckets if x.bucket_id == bid)
             for i, (d, K) in enumerate(_bucket_options(bid, depths)):
-                bm[(bid, i)] = branching.dense_bucket_moments(problem, b) if K == 1 else branching.paired_replay_all_bucket_moments(problem, b, d)
+                bm[(bid, i)] = (
+                    branching.dense_bucket_moments(problem, b)
+                    if K == 1
+                    else branching.paired_replay_all_bucket_moments(problem, b, d)
+                )
         objs: dict = {}
         for combo in itertools.product(range(7), repeat=4):
             parts = [bm[(bid, i)] for bid, i in zip(BUCKET_ORDER, combo)]
@@ -131,7 +138,7 @@ def _calibration(ctx: runner.RunContext) -> runner.RunResult:
     for combo in itertools.product(range(7), repeat=4):
         obj = sum(o[combo][0] for o in cal_objectives) / len(cal_objectives)
         cost = sum(o[combo][1] for o in cal_objectives) / len(cal_objectives)
-        if best_obj is None or obj < best_obj - 1e-15 or (abs(obj - best_obj) <= 1e-15 and cost < best_cost):
+        if best_obj is None or best_cost is None or obj < best_obj - 1e-15 or (abs(obj - best_obj) <= 1e-15 and cost < best_cost):
             best_obj, best_cost, best_combo = obj, cost, combo
 
     mapping = _build_mapping(best_combo, depths)
@@ -148,6 +155,7 @@ def _calibration(ctx: runner.RunContext) -> runner.RunResult:
         "selection_sha256": None,  # filled at publish (content hash)
     }
     from credit_auditor.canonical import sha256_json
+
     body = {k: v for k, v in selection.items() if k != "selection_sha256"}
     selection["selection_sha256"] = sha256_json(body)
 
@@ -165,16 +173,19 @@ def _calibration(ctx: runner.RunContext) -> runner.RunResult:
         ]
     )
     return runner.RunResult(
-        result={"status": "ok", "selection": selection, "calibration_objectives": {str(k): v for o in cal_objectives for k, v in o.items()}},
+        result={
+            "status": "ok",
+            "selection": selection,
+            "calibration_objectives": {str(k): v for o in cal_objectives for k, v in o.items()},
+        },
         oracle_result={"oracle_ok": True},
         gate_decision=AuditDecision(experiment_integrity=ClaimStatus.PASS).model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": [{"problem": k, "objective": v[0], "cost": v[1]} for o in cal_objectives for k, v in o.items()]},
+        raw_rows=[{"problem": k, "objective": v[0], "cost": v[1]} for o in cal_objectives for k, v in o.items()],
     )
 
 
 def _test(ctx: runner.RunContext) -> runner.RunResult:
-    depths = _protocol_depths(ctx)
     test_path = next((p for p in ctx.seed_manifest_paths if "d002_test" in p.name), None)
     if test_path is None:
         raise runner.DriverError("d002_test seed manifest required")
@@ -187,6 +198,7 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         raise runner.DriverError("test phase requires --frozen-selection (A8: no test-time reselection)")
     selection = json.loads(ctx.frozen_selection.read_text(encoding="utf-8"))
     from credit_auditor.canonical import sha256_json
+
     body = {k: v for k, v in selection.items() if k != "selection_sha256"}
     if sha256_json(body) != selection.get("selection_sha256"):
         raise runner.DriverError(
@@ -209,6 +221,8 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         mb = branching.estimator_moments(problem, mapping)
         cost = branching.mapping_cycle_cost(problem, mapping)
         map_mse = branching.fixed_budget_mse_from_moments(mb.mean, mb.second_moment, target, PRIMARY_BUDGET, cost)
+        if env_mse is None or map_mse is None:
+            raise runner.DriverError(f"infeasible budget at problem {row['problem_id']}")
         ratio = map_mse / env_mse
         ratios.append(ratio)
         rows.append(
@@ -243,7 +257,16 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
             status=ClaimStatus.PASS if utility_pass else ClaimStatus.FAIL,
             required_gates=["integrity", "independent_oracle", "matched_cost", "heldout_split", "utility"],
             reason_codes=[] if utility_pass else [ReasonCode.U002_UTILITY_THRESHOLD_FAILED],
-            claim_ceiling={"allowed": ["fixed mapping efficiency on the frozen semantic world; the paired-replay protocol (not the width) drives the win"], "forbidden": ["adaptive variable-width credit assignment", "width-dependent mechanism claims", "historical 0.694 reproduction"]},
+            claim_ceiling={
+                "allowed": [
+                    "fixed mapping efficiency on the frozen semantic world; the paired-replay protocol (not the width) drives the win"
+                ],
+                "forbidden": [
+                    "adaptive variable-width credit assignment",
+                    "width-dependent mechanism claims",
+                    "historical 0.694 reproduction",
+                ],
+            },
         ),
         ClaimDecision(
             claim_id="variable_width_adaptivity",
@@ -294,11 +317,18 @@ def _test(ctx: runner.RunContext) -> runner.RunResult:
         ]
     )
     return runner.RunResult(
-        result={"status": "ok", "problems": rows, "bootstrap": boot, "selected_mapping": {k: list(v) for k, v in mapping.items()}, "selected_widths": selected_widths},
+        result={
+            "status": "ok",
+            "problems": rows,
+            "bootstrap": boot,
+            "selected_mapping": {k: list(v) for k, v in mapping.items()},
+            "selected_widths": selected_widths,
+        },
         oracle_result={"oracle_ok": oracle_ok},
         gate_decision=decision.model_dump(),
         report_md=report,
-        manifest_extra={"raw_results": rows, "parent_calibration_selection_sha256": selection_hash},
+        manifest_extra={"parent_calibration_selection_sha256": selection_hash},
+        raw_rows=rows,
     )
 
 

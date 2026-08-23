@@ -1,6 +1,7 @@
 """M0 frozen regression: the formal run must keep its expected outcome
 structure. Runs the full driver (fresh artifacts each time, no-overwrite
 respected via unique dirs)."""
+
 from __future__ import annotations
 
 import json
@@ -8,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.full
-
 from credit_auditor import runner
 from credit_auditor.experiments import m0 as m0_exp
+
+pytestmark = pytest.mark.full
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -42,7 +43,10 @@ def test_m0_claims(m0_run):
 
 def test_m0_all_problems_pass_env_and_oracle(m0_run):
     man = json.loads((m0_run / "run_manifest.json").read_text(encoding="utf-8"))
-    raw = man["raw_results"]
+    assert man["raw_rows_count"] == 12
+    from credit_auditor.canonical import read_jsonl_zst
+
+    raw = read_jsonl_zst(m0_run / "raw_rows.jsonl.zst")
     assert len(raw) == 12
     for p in raw:
         assert p["environment_gate"]["status"] == "pass", p["problem_id"]

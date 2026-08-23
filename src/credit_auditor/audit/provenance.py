@@ -6,6 +6,7 @@ Checks on a published artifact directory:
 - run_manifest exit status and result.json status consistency
 - failed runs still enter the index (checked at index build time)
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -52,6 +53,7 @@ def audit_artifact_dir(artifact_dir: Path) -> dict:
     manifest_path = artifact_dir / "run_manifest.json"
     if manifest_path.is_file():
         import json as _json
+
         try:
             man = _json.loads(manifest_path.read_text(encoding="utf-8"))
             missing = [f for f in MANIFEST_REQUIRED_FIELDS if f not in man]
@@ -67,5 +69,6 @@ def audit_artifact_dir(artifact_dir: Path) -> dict:
 def verify_no_overwrite(artifact_dir: Path) -> None:
     """A13: canonical outputs are never overwritten; re-runs must target a new
     directory or be refused by the runner before any write."""
-    from credit_auditor.canonical import NoOverwriteError, refuse_existing
+    from credit_auditor.canonical import refuse_existing
+
     refuse_existing(artifact_dir)  # raises NoOverwriteError if it exists

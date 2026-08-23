@@ -1,4 +1,5 @@
 """Faults A5/A6 (§14): unmatched budget and unfaithful baseline."""
+
 from __future__ import annotations
 
 from fractions import Fraction
@@ -51,7 +52,9 @@ def test_A6_weak_baseline():
 
 
 def test_correct_baseline_entrypoint_passes():
-    gate = baseline_entrypoint_gate(baseline_kind="dense_optimal_constant_root_rloo", frozen_envelope="dense_optimal_constant_root_rloo")
+    gate = baseline_entrypoint_gate(
+        baseline_kind="dense_optimal_constant_root_rloo", frozen_envelope="dense_optimal_constant_root_rloo"
+    )
     assert gate.status == "pass"
 
 

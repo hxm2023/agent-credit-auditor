@@ -1,4 +1,5 @@
 """BernoulliSequenceMDP math tests (§17.1)."""
+
 from __future__ import annotations
 
 import math
@@ -20,7 +21,19 @@ def test_all_paths_count():
 
 
 def test_score_vector():
-    world = BernoulliSequenceMDP(probabilities=(0.25, 0.5, 0.75), rewards={(0, 0, 0): 1.0, (0, 0, 1): 1.0, (0, 1, 0): 1.0, (0, 1, 1): 1.0, (1, 0, 0): 1.0, (1, 0, 1): 1.0, (1, 1, 0): 1.0, (1, 1, 1): 1.0})
+    world = BernoulliSequenceMDP(
+        probabilities=(0.25, 0.5, 0.75),
+        rewards={
+            (0, 0, 0): 1.0,
+            (0, 0, 1): 1.0,
+            (0, 1, 0): 1.0,
+            (0, 1, 1): 1.0,
+            (1, 0, 0): 1.0,
+            (1, 0, 1): 1.0,
+            (1, 1, 0): 1.0,
+            (1, 1, 1): 1.0,
+        },
+    )
     s = world.score((1, 0, 1))
     assert s == (0.75, -0.5, 0.25)
 
@@ -38,11 +51,13 @@ def test_true_gradient_matches_finite_difference():
     g_num = []
     for t in range(world.horizon):
         p0 = world.probabilities[t]
+
         def j_with(delta: float) -> float:
             probs = list(world.probabilities)
             probs[t] = sigmoid(logit(p0) + delta)
             w = BernoulliSequenceMDP(tuple(probs), world.rewards)
             return w.expected_reward()
+
         g_num.append((j_with(eps) - j_with(-eps)) / (2 * eps))
     g_exact = world.true_gradient()
     np.testing.assert_allclose(g_num, g_exact, rtol=1e-5, atol=1e-7)
@@ -79,6 +94,7 @@ def test_q_values_match_direct_conditional_expectation():
 
 def test_world_rejects_incomplete_rewards():
     import pytest
+
     with pytest.raises(ValueError):
         BernoulliSequenceMDP(probabilities=(0.5, 0.5), rewards={(0, 0): 1.0})
 
@@ -101,5 +117,6 @@ def test_noop_alternative_detection():
     )
     # action at t=1 is irrelevant: no effect on reward -> group variance zero
     from credit_auditor.audit.environment import noop_alternative_detection
+
     flags = noop_alternative_detection(world)
     assert flags == [False, True]

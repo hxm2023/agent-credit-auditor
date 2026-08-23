@@ -15,6 +15,7 @@ latent-noise coupling), which cancels continuation noise exactly.
   Unbiased for the full gradient; the paired-replay mechanism control is the
   uncoupled variant (paired_sibling_uncoupled).
 """
+
 from __future__ import annotations
 
 from credit_auditor.worlds.base import WeightedVector
@@ -58,9 +59,7 @@ def propagated_sibling_distribution(world: BernoulliSequenceMDP, t: int) -> list
     return out
 
 
-def paired_sibling_distribution(
-    world: BernoulliSequenceMDP, skip: tuple[int, ...] = ()
-) -> list[WeightedVector]:
+def paired_sibling_distribution(world: BernoulliSequenceMDP, skip: tuple[int, ...] = ()) -> list[WeightedVector]:
     """Paired-replay full-gradient estimator (design §8.2 case 5 / matched
     cost positive). Coordinates in `skip` contribute exactly zero (their
     target is zero in the designed world); all other coordinates use their
@@ -116,7 +115,11 @@ def mechanism_signature_local() -> dict:
 
 
 def mechanism_signature_propagated() -> dict:
-    return {"estimator_family": "sibling", "contrast_source": "local_sibling", "updated_coordinates": "all_including_prefix"}
+    return {
+        "estimator_family": "sibling",
+        "contrast_source": "local_sibling",
+        "updated_coordinates": "all_including_prefix",
+    }
 
 
 def mechanism_signature_paired() -> dict:

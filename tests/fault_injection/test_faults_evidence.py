@@ -1,5 +1,6 @@
 """Faults A10, A12, A13, A14 (§14): oracle independence, evidence
 completeness, no-overwrite, numerical margin."""
+
 from __future__ import annotations
 
 import json
@@ -54,6 +55,7 @@ def test_A13_canonical_output_overwrite_refused(tmp_path):
     p = tmp_path / "canonical.json"
     atomic_write_json({"v": 1}, p)
     from credit_auditor.canonical import refuse_existing
+
     with pytest.raises(NoOverwriteError):
         refuse_existing(p)
     # the original content is intact (no silent overwrite)

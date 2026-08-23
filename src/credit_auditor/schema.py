@@ -7,19 +7,21 @@ is `fractions.Fraction` end-to-end.
 An experiment may produce multiple ClaimDecisions; a single status never covers
 all claim levels (§7.5 aggregation rules).
 """
+
 from __future__ import annotations
 
 from enum import Enum
 from fractions import Fraction
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 CanonicalModel = BaseModel
 
 # --------------------------------------------------------------------------
 # Status semantics (§12) — status belongs to a claim_id, not to a directory.
 # --------------------------------------------------------------------------
+
 
 class ClaimStatus(str, Enum):
     PASS = "pass"
@@ -38,6 +40,7 @@ class ExperimentStatus(str, Enum):
 # --------------------------------------------------------------------------
 # Reason codes (§11)
 # --------------------------------------------------------------------------
+
 
 class ReasonCode(str, Enum):
     # Target gate
@@ -79,6 +82,7 @@ class ReasonCode(str, Enum):
 # 7.1 EstimandSpec
 # --------------------------------------------------------------------------
 
+
 class EstimandSpec(CanonicalModel):
     estimand_id: str
     world_family: str
@@ -94,6 +98,7 @@ class EstimandSpec(CanonicalModel):
 # --------------------------------------------------------------------------
 # 7.2 SamplingSpec
 # --------------------------------------------------------------------------
+
 
 class DecisionSampling(CanonicalModel):
     replacement: Literal["with_replacement", "without_replacement"]
@@ -128,6 +133,7 @@ class SamplingSpec(CanonicalModel):
 # 7.3 CostSpec — Fraction arithmetic, registered calculators only.
 # --------------------------------------------------------------------------
 
+
 class CostTerm(CanonicalModel):
     term_id: str
     quantity: str  # Fraction string "a/b"
@@ -144,7 +150,7 @@ class CostBreakdown(CanonicalModel):
     total: str  # Fraction string "a/b"
 
     @model_validator(mode="after")
-    def _total_must_equal_sum(self) -> "CostBreakdown":
+    def _total_must_equal_sum(self) -> CostBreakdown:
         # Auditor re-sums term subtotals and checks units; a plugin cannot
         # return an undecomposable total (§7.3).
         total = _frac(self.total)
@@ -213,8 +219,15 @@ def _d002_branching_v1(**params: Any) -> CostBreakdown:
         primary_unit="environment_transition",
         terms=[
             CostTerm(term_id="prefix", quantity=f"{depth}/1", unit_cost=_fstr(c_prefix), subtotal=_fstr(prefix)),
-            CostTerm(term_id="suffixes", quantity=f"{width*(horizon-depth)}/1", unit_cost=_fstr(c_suffix), subtotal=_fstr(suffixes)),
-            CostTerm(term_id="restores", quantity=f"{width-1}/1", unit_cost=_fstr(c_restore), subtotal=_fstr(restores)),
+            CostTerm(
+                term_id="suffixes",
+                quantity=f"{width * (horizon - depth)}/1",
+                unit_cost=_fstr(c_suffix),
+                subtotal=_fstr(suffixes),
+            ),
+            CostTerm(
+                term_id="restores", quantity=f"{width - 1}/1", unit_cost=_fstr(c_restore), subtotal=_fstr(restores)
+            ),
         ],
         total=_fstr(total),
     )
@@ -238,8 +251,18 @@ def _paired_replay_all_v1(**params: Any) -> CostBreakdown:
         primary_unit="environment_transition",
         terms=[
             CostTerm(term_id="full_rollout", quantity=f"{h}/1", unit_cost="1/1", subtotal=_fstr(roll)),
-            CostTerm(term_id="sibling_continuations", quantity=f"{cont.numerator}/{cont.denominator}", unit_cost="1/1", subtotal=_fstr(cont)),
-            CostTerm(term_id="restores", quantity=f"{rest.numerator}/{rest.denominator}", unit_cost="1/1", subtotal=_fstr(rest)),
+            CostTerm(
+                term_id="sibling_continuations",
+                quantity=f"{cont.numerator}/{cont.denominator}",
+                unit_cost="1/1",
+                subtotal=_fstr(cont),
+            ),
+            CostTerm(
+                term_id="restores",
+                quantity=f"{rest.numerator}/{rest.denominator}",
+                unit_cost="1/1",
+                subtotal=_fstr(rest),
+            ),
         ],
         total=_fstr(roll + cont + rest),
     )
@@ -297,6 +320,7 @@ class CostSpec(CanonicalModel):
 # 7.4 EstimatorSpec
 # --------------------------------------------------------------------------
 
+
 class EstimatorSpec(CanonicalModel):
     estimator_id: str
     version: str = "v1"
@@ -310,6 +334,7 @@ class EstimatorSpec(CanonicalModel):
 # --------------------------------------------------------------------------
 # 7.5 AuditDecision / ClaimDecision
 # --------------------------------------------------------------------------
+
 
 class GateResult(CanonicalModel):
     gate: str  # integrity | target_identity | independent_oracle | sampling_support | matched_cost | heldout_split | utility | mechanism | environment | provenance | novelty
@@ -345,7 +370,7 @@ class AuditDecision(CanonicalModel):
     note: str | None = None
 
     @model_validator(mode="after")
-    def _integrity_dominates(self) -> "AuditDecision":
+    def _integrity_dominates(self) -> AuditDecision:
         # §7.5: integrity INVALID makes every dependent claim INVALID.
         if self.experiment_integrity == ClaimStatus.INVALID:
             for claim in self.claims:
@@ -356,6 +381,7 @@ class AuditDecision(CanonicalModel):
 # --------------------------------------------------------------------------
 # Moments (§5.5) — exact bias, variance trace, MSE, fixed-budget MSE.
 # --------------------------------------------------------------------------
+
 
 class MomentResult(CanonicalModel):
     estimand_id: str
@@ -377,6 +403,7 @@ class MomentResult(CanonicalModel):
 # --------------------------------------------------------------------------
 # Protocol document (top-level frozen config)
 # --------------------------------------------------------------------------
+
 
 class Protocol(CanonicalModel):
     protocol_id: str
@@ -402,9 +429,19 @@ class Protocol(CanonicalModel):
         # preserved under `extra`. This keeps the frozen JSON files literal.
         if isinstance(data, dict):
             known = {
-                "protocol_id", "protocol_version", "description", "reconstruction_mode",
-                "frozen_at", "world_family", "policy_parameterization", "reward_semantics",
-                "primary_estimand", "tolerances", "gates", "claims", "expected_outcome",
+                "protocol_id",
+                "protocol_version",
+                "description",
+                "reconstruction_mode",
+                "frozen_at",
+                "world_family",
+                "policy_parameterization",
+                "reward_semantics",
+                "primary_estimand",
+                "tolerances",
+                "gates",
+                "claims",
+                "expected_outcome",
                 "fault_injection_expected",
             }
             extras = {k: v for k, v in data.items() if k not in known}

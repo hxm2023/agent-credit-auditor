@@ -10,6 +10,7 @@ branch continuation cost dominate. This is the semantic reproduction of the
 historical V001 failure TYPE (residual noise amplification + branch cost),
 not a claim of the historical 24.81x number.
 """
+
 from __future__ import annotations
 
 from credit_auditor.worlds.base import WeightedVector

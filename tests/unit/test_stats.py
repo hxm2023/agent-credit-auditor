@@ -1,10 +1,11 @@
 """Exact moments tests (§5.5, §17.1)."""
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
 
-from credit_auditor.stats import ExactMoments, average_mse_at_budget, exact_moments, fixed_budget_mse
+from credit_auditor.stats import average_mse_at_budget, exact_moments, fixed_budget_mse
 from credit_auditor.worlds.base import WeightedVector
 
 
