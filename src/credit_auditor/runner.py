@@ -301,7 +301,7 @@ def _write_package(
 
     sums = {k: v for k, v in sha256_tree(dirpath).items() if k != "SHA256SUMS"}
     lines = [f"{v}  {k}" for k, v in sorted(sums.items())]
-    (dirpath / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (dirpath / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     run_result.manifest_extra["output_hashes"] = sums
 
 

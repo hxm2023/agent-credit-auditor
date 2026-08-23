@@ -81,12 +81,14 @@ def build_release_report(artifact_root: Path, output: Path | None = None, run_te
         test_log = _run_tests()
     else:
         test_log = "TEST_LOG skipped (run_tests=False; release build runs it)\n"
-    (output / "TEST_LOG.txt").write_text(test_log, encoding="utf-8")
+    (output / "TEST_LOG.txt").write_text(test_log, encoding="utf-8", newline="\n")
 
     report = _render_report(index)
     atomic_write_text(report, output / "REPORT.md")
     sums = {k: v for k, v in sha256_tree(output).items() if k != "SHA256SUMS"}
-    (output / "SHA256SUMS").write_text("\n".join(f"{v}  {k}" for k, v in sorted(sums.items())) + "\n", encoding="utf-8")
+    (output / "SHA256SUMS").write_text(
+        "\n".join(f"{v}  {k}" for k, v in sorted(sums.items())) + "\n", encoding="utf-8", newline="\n"
+    )
     return output
 
 

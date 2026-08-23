@@ -12,6 +12,7 @@ from credit_auditor.experiments import continuation_scale as _continuation_scale
 from credit_auditor.experiments import d002 as _d002
 from credit_auditor.experiments import m0 as _m0
 from credit_auditor.experiments import minimal_logging as _minimal_logging
+from credit_auditor.experiments import self_audit as _self_audit
 from credit_auditor.experiments import v001 as _v001
 
 _m0.register()
@@ -20,6 +21,7 @@ _d002.register()
 _continuation.register()
 _continuation_scale.register()
 _minimal_logging.register()
+_self_audit.register()
 
 
 def main(argv: list[str] | None = None) -> int:

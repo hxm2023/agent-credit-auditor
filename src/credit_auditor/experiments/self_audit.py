@@ -262,7 +262,7 @@ def _fault_instances(fault_id: str, n: int) -> list[tuple[bool, dict]]:
             sums_lines = []
             for name in list(names) + ["run_manifest.json"]:
                 sums_lines.append(f"{_sf(d2 / name)}  {name}")
-            (d2 / "SHA256SUMS").write_text("\n".join(sums_lines) + "\n", encoding="utf-8")
+            (d2 / "SHA256SUMS").write_text("\n".join(sums_lines) + "\n", encoding="utf-8", newline="\n")
             audit2 = audit_artifact_dir(d2)
             out.append((False, {"detected": audit2["integrity"] == "fail", "status": audit2["integrity"], "codes": []}))
 

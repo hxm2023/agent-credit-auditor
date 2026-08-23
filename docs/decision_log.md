@@ -192,6 +192,28 @@
   (enum or Bellman mismatch > 1e-9), the D002 pack is INVALID. If the
   calibrated widths ever show diversity >= 2, the mechanism-fail claim is void.
 
+## D10 — v0.1.5 packs removed from the tree; v0.1.6 regenerated with LF (2026-08-23)
+
+- **Decision**: The v0.1.5 artifact packs committed with CRLF line endings
+  were removed from the working tree (kept in git history and the v0.1.5
+  GitHub release) and the full release regenerated as `artifacts/v0.1.6`:
+  (a) `.gitattributes` (`* text=auto eol=lf`) + canonical LF writes fix the
+  cross-platform checksum root cause; (b) the strict provenance validator now
+  fails on empty SHA256SUMS and enforces expected-file coverage; (c) a CI
+  release gate (`scripts/validate_artifacts.sh`) runs the Auditor's own
+  validation + `sha256sum -c` on every checked-in pack.
+- **Evidence**: External review (docs/gpt_review_round1.md, P0-1) showed
+  73/98 SHA256SUMS mismatches on the v0.1.5 packs when checked out on Linux —
+  Windows had hashed CRLF bytes while git stores LF. `credit-auditor audit`
+  on the v0.1.5 packs returned integrity=fail.
+- **Alternative**: Patch the v0.1.5 checksums in place.
+- **Why rejected**: That would hash the rewritten bytes post-hoc, which is
+  exactly the "files rewritten but checksums not regenerated" failure the
+  review called out; it would not fix the root cause.
+- **Falsification**: If any regenerated v0.1.6 pack fails `sha256sum -c` on a
+  Linux checkout or fails the strict provenance validation, the release gate
+  is broken and the pack is INVALID.
+
 ---
 
 *Log opened 2026-08-22 before the first formal run. Append-only; new entries

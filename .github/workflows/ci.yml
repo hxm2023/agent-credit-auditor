@@ -50,6 +50,9 @@ jobs:
             uv run credit-auditor validate-protocol "$p"
           done
 
+      - name: Release gate — every checked-in artifact pack passes the Auditor
+        run: bash scripts/validate_artifacts.sh
+
       - name: Smoke tests (fast, excludes full-driver pipelines)
         run: uv run pytest -m "not full" -q
 
