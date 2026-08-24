@@ -19,12 +19,16 @@ variance, throughput). Written 2026-08-24; predictions pre-registered in
   - `paired` — per-decision signed credit from the paired-branch reliability
     gate (`agent_ttrl.credit.paired_credit` over a (slots x 2 branches)
     utility matrix), applied at decision positions
-- **Loop**: 3 epochs; epoch 0 rollout via the vLLM generation service
-  (Guard `behavior_logprob_source="generation_service"`); epochs 1-2 rollout
-  by the trainer's own current policy (Guard `"exact_behavior_scorer"`).
-  Guard chain per epoch: identity validation -> reward event -> pre-update
-  ALLOW -> materialize -> guarded update -> commit adapter + manifest ->
-  canary. 32 prompts x 8 gens x 3 epochs, LoRA rank 16 / alpha 32 / lr 5e-6.
+- **Loop**: 3 epochs; ALL epochs roll out with the trainer's own current
+  policy and score exactly (Guard `behavior_logprob_source=
+  "exact_behavior_scorer"`, schema 7.5 — the trainer emits GenerationEvent +
+  ScoringEvent per sequence). The vLLM generation-service mode is NOT
+  exercised: vLLM 0.26 cannot initialize on this server's Blackwell GPU
+  (SM 12.x requires a newer vLLM); documented in each run's metrics.
+  Guard chain per epoch: identity validation -> ScoringEvent -> reward
+  event -> pre-update ALLOW -> materialize -> guarded update -> commit
+  adapter + manifest -> canary. 32 prompts x 8 gens x 3 epochs, LoRA
+  rank 16 / alpha 32 / lr 5e-6.
 - **Output per run**: `metrics.json` (per-epoch success/mean_u/calls/
   invalid/grad_l2/loss + final eval on held-out prompts + KL drift vs base +
   GPU seconds), the Guard event store (auditable), and
@@ -46,10 +50,14 @@ TAU2_SERVER_PORT=8800 nohup /root/autodl-tmp/appworld-venv/bin/python \
   --out /root/autodl-tmp/agent-ttrl/stage3/out/dryrun \
   --prompts 8 --gens 4 --epochs 1
 
-# 3. full matrix (18 runs, ~6-9 GPU hours, sequential)
+# 3. full matrix (18 runs, ~5-6 GPU hours, sequential; each run retries up
+#    to 3 times on infra kills)
 bash /root/autodl-tmp/agent-ttrl/stage3/run_matrix.sh \
   > /root/autodl-tmp/agent-ttrl/stage3/matrix.log 2>&1 &
 ```
+
+Result collection: `uv run python scripts/stage3_report.py <results_dir>` in
+this repo writes the comparison against the pre-registered predictions.
 
 ## Honest boundaries
 
