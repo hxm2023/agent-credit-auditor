@@ -290,7 +290,7 @@ def _stage3_loss_chunk(model, handles, pos_weights, group_size, clip_epsilon=0.2
 
     out = model(input_ids=seq)[0]
     logits = out[:, :-1, :].float()
-    targets = seq[:, 1:]
+    targets = seq[:, 1:].long()
     new_logps = -_F.cross_entropy(logits.reshape(-1, V), targets.reshape(-1), reduction="none").reshape(B, T - 1)
 
     counts = mask.sum(dim=1)
@@ -440,11 +440,12 @@ def main() -> int:
             with _t.no_grad():
                 for i in range(0, len(prompts), 8):
                     chunk = prompts[i:i + 8]
-                    ids = tokenizer([p["text"] for p in chunk], return_tensors="pt",
-                                    padding=True).input_ids.to("cuda:0")
+                    enc = tokenizer([p["text"] for p in chunk], return_tensors="pt", padding=True)
+                    ids = enc.input_ids.to("cuda:0")
+                    attn = enc.attention_mask.to("cuda:0")
                     for g in range(args.gens):
                         out = model.generate(
-                            ids, max_new_tokens=MAX_COMPLETION, do_sample=True,
+                            ids, attention_mask=attn, max_new_tokens=MAX_COMPLETION, do_sample=True,
                             temperature=1.0, top_p=1.0, pad_token_id=tokenizer.eos_token_id,
                         )
                         logits = model(out).logits.float()
