@@ -1,0 +1,65 @@
+# Stage 3 — matched-budget real closed loop (autodl2)
+
+The external review's Stage 3: 2 tool-use tasks x 3 credit estimators x
+3 seeds with matched rollout/token/optimizer budgets, final checkpoints,
+and honest reporting (success, reward, KL, length, invalid calls, estimator
+variance, throughput). Written 2026-08-24; predictions pre-registered in
+`PREDICTIONS.md` BEFORE the runs.
+
+## What runs
+
+- **Tasks**: `cts_order` (CTS evidence-utility world, the r002 environment)
+  and `tau2_retail` (TAU2 base split via the tau2 server: /init /exec /eval,
+  reward = pass_pct of the evaluation criteria).
+- **Estimators** (mapping to the Stage-2 bridge set):
+  - `dense` — group-relative GRPO advantage over all masked tokens (the
+    Guard's `grpo_loss`)
+  - `local` — the SAME advantage applied ONLY at tool-call decision token
+    positions (the local-sibling analog; custom `stage3_loss`)
+  - `paired` — per-decision signed credit from the paired-branch reliability
+    gate (`agent_ttrl.credit.paired_credit` over a (slots x 2 branches)
+    utility matrix), applied at decision positions
+- **Loop**: 3 epochs; epoch 0 rollout via the vLLM generation service
+  (Guard `behavior_logprob_source="generation_service"`); epochs 1-2 rollout
+  by the trainer's own current policy (Guard `"exact_behavior_scorer"`).
+  Guard chain per epoch: identity validation -> reward event -> pre-update
+  ALLOW -> materialize -> guarded update -> commit adapter + manifest ->
+  canary. 32 prompts x 8 gens x 3 epochs, LoRA rank 16 / alpha 32 / lr 5e-6.
+- **Output per run**: `metrics.json` (per-epoch success/mean_u/calls/
+  invalid/grad_l2/loss + final eval on held-out prompts + KL drift vs base +
+  GPU seconds), the Guard event store (auditable), and
+  `trajectory_records.jsonl` (aca-trajectory-record-1.0) for the Auditor's
+  Stage-1 trajectory audit.
+
+## How to run (user-executed on autodl2; the Auditor agent was blocked from
+server execution by the auto-mode gate after upload)
+
+```bash
+# 1. tau2 server (needed only for the tau2_retail task)
+TAU2_SERVER_PORT=8800 nohup /root/autodl-tmp/appworld-venv/bin/python \
+  /root/autodl-tmp/agent-ttrl/scripts/tau2_server.py \
+  > /root/autodl-tmp/agent-ttrl/stage3/out/tau2_server.log 2>&1 < /dev/null &
+
+# 2. dry-run first (8 prompts, 1 epoch, cts_order x dense)
+/root/autodl-tmp/grpo-guard/.venv/bin/python /root/autodl-tmp/agent-ttrl/stage3/train.py \
+  --task cts_order --estimator dense --seed 1 \
+  --out /root/autodl-tmp/agent-ttrl/stage3/out/dryrun \
+  --prompts 8 --gens 4 --epochs 1
+
+# 3. full matrix (18 runs, ~6-9 GPU hours, sequential)
+bash /root/autodl-tmp/agent-ttrl/stage3/run_matrix.sh \
+  > /root/autodl-tmp/agent-ttrl/stage3/matrix.log 2>&1 &
+```
+
+## Honest boundaries
+
+- The estimators are the real-rollout mapping of the Stage-2 definitions
+  (documented in credit.py); the paired-branch credit uses a
+  (slots x branches) utility matrix, not CRN-coupled branches — the
+  reliability gate's paired structure is kept, the coupling is not.
+- Real data, real training, Guard-supervised; but the runs are SMALL
+  (LoRA, 32 prompts) — the numbers support the mechanism-level comparison,
+  not deployment claims.
+- The Auditor's Stage-1 audit runs on the exported trajectory records; the
+  Stage-2 verdicts predict the ordering (PREDICTIONS.md); both are compared
+  honestly in the results report.
