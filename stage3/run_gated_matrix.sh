@@ -14,9 +14,26 @@ OUT=${1:-$STAGE3/out}
 GATE_CHECK=300  # seconds between GPU-availability polls
 
 busy() {
-  # other GPU consumers: any process with cuda:1 / cts_v2 / agent-ttrl /
-  # grpo-guard training beyond our own
-  ps aux | grep -E 'cts_v2_stream|agent_ttrl|batch_online|canary|lora_variant|r002|r003' | grep -v grep | grep -q .
+  # any foreign GPU compute process (the user's projects use cuda:1 and the
+  # trainer uses cuda:0; both show up in nvidia-smi compute-apps)
+  local n
+  n=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | wc -l)
+  [ "${n:-0}" -gt 0 ]
+}
+
+stable_window() {
+  # the GPU must be free for STABLE_POLLS consecutive polls (each GATE_CHECK
+  # seconds) before the matrix starts — the user's projects restart
+  # intermittently
+  local polls=0
+  while [ "$polls" -lt 2 ]; do
+    if busy; then
+      return 1
+    fi
+    polls=$((polls + 1))
+    [ "$polls" -lt 2 ] && sleep "$GATE_CHECK"
+  done
+  return 0
 }
 
 done_count() {
@@ -46,7 +63,11 @@ while true; do
     sleep "$GATE_CHECK"
     continue
   fi
-  echo "[$(date +%H:%M:%S)] GPUs free; running matrix (resume-safe)"
+  if ! stable_window; then
+    echo "[$(date +%H:%M:%S)] GPU not stably free (user project restarts); re-waiting"
+    continue
+  fi
+  echo "[$(date +%H:%M:%S)] GPUs free for a stable window; running matrix (resume-safe)"
   bash "$STAGE3/run_matrix.sh" "$OUT"
   echo "[$(date +%H:%M:%S)] matrix pass finished; re-checking"
   sleep 30
