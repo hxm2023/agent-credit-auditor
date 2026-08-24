@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# GPU-gated self-healing matrix launcher (runs on autodl2, user-executed or
+# watchdog-deployed): waits for the server's other projects (cts_v2_stream /
+# agent-ttrl / grpo-guard GPU work) to release the GPUs, then runs the stage3
+# matrix; if an external kill interrupts it, the loop restarts it. Runs with
+# completed metrics.json are skipped (resume-safe). Ends when 18/18 runs
+# have metrics.json.
+#
+# Deployment: setsid nohup bash stage3/run_gated_matrix.sh \
+#   > stage3/gated_matrix.log 2>&1 < /dev/null &
+set -uo pipefail
+STAGE3=/root/autodl-tmp/agent-ttrl/stage3
+OUT=${1:-$STAGE3/out}
+GATE_CHECK=300  # seconds between GPU-availability polls
+
+busy() {
+  # other GPU consumers: any process with cuda:1 / cts_v2 / agent-ttrl /
+  # grpo-guard training beyond our own
+  ps aux | grep -E 'cts_v2_stream|agent_ttrl|batch_online|canary|lora_variant|r002|r003' | grep -v grep | grep -q .
+}
+
+done_count() {
+  # count only the 18 real runs (dryruns have metrics.json too but must not
+  # count toward completion)
+  n=0
+  for task in cts_order tau2_retail; do
+    for estimator in dense local paired; do
+      for seed in 1 2 3; do
+        [ -f "$OUT/${task}_${estimator}_s${seed}/metrics.json" ] && n=$((n + 1))
+      done
+    done
+  done
+  echo "$n"
+}
+
+echo "== gated matrix: waiting for GPU availability =="
+while true; do
+  n=$(done_count)
+  echo "[$(date +%H:%M:%S)] metrics=$n/18"
+  if [ "$n" -ge 18 ]; then
+    echo "== gated matrix complete: $OUT =="
+    break
+  fi
+  if busy; then
+    echo "[$(date +%H:%M:%S)] other project using GPUs; waiting ${GATE_CHECK}s"
+    sleep "$GATE_CHECK"
+    continue
+  fi
+  echo "[$(date +%H:%M:%S)] GPUs free; running matrix (resume-safe)"
+  bash "$STAGE3/run_matrix.sh" "$OUT"
+  echo "[$(date +%H:%M:%S)] matrix pass finished; re-checking"
+  sleep 30
+done
