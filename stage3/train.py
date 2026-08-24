@@ -136,6 +136,7 @@ def base_manifest(policy_version: int, tok_sha: str, tpl_sha: str, run_name: str
     return {
         "manifest_id": f"pm-{policy_version}",
         "model_id": "Qwen/Qwen3-4B",
+        "model_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
         "policy_version": policy_version,
         "parent_policy_version": None,
         "weights": weights,
@@ -305,6 +306,10 @@ def main() -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+    import shutil
+
+    shutil.rmtree(out_dir / "events", ignore_errors=True)
+    shutil.rmtree(out_dir / "store", ignore_errors=True)
     run_name = f"{args.task}_{args.estimator}_s{args.seed}"
     run_id = f"{run_name}-{int(time.time())}"
     sampling_sha = hashlib.sha256(f"stage3-{args.task}-{args.estimator}-{args.seed}-temp1.0".encode()).hexdigest()
@@ -417,6 +422,7 @@ def main() -> int:
                     raise RuntimeError(f"identity FAILED {env.envelope_id}: {decision.decision_payload.reason_codes}")
                 log_.append(decision, required_epoch=epoch_no)
                 row["gen"] = gen
+                row["id_decision"] = decision
                 out_rows.append(row)
             return out_rows
 
@@ -500,13 +506,13 @@ def main() -> int:
                     components={"utility": row["u"]}, terminal_status="success", latency_ms=0.0,
                 ).seal()
                 log_.append(rew, required_epoch=epoch)
-                pre = build_envelope(run_id, gen, rew, None, ckpt_cur["checkpoint_manifest_sha256"],
+                pre = build_envelope(run_id, gen, rew, row["id_decision"], ckpt_cur["checkpoint_manifest_sha256"],
                                      split_manifest, "pre_update", policy_version, f"update-{policy_version+1}",
                                      source=("generation_service" if e == 0 else "exact_behavior_scorer"))
                 ctx = ValidationContext(envelope=pre, store=store_, events=all_events(),
                                         policy_manifest=manifest_model(ckpt_cur), split_manifest=split_model(split_manifest),
                                         protocol=protocol)
-                decision = validate_envelope(ctx, "pre_update")
+                decision = validate_envelope(ctx, "full_pre_update")
                 if decision.decision_payload.decision != "allow":
                     raise RuntimeError(f"pre-update FAILED {pre.envelope_id}: {decision.decision_payload.reason_codes}")
                 log_.append(decision, required_epoch=epoch)
