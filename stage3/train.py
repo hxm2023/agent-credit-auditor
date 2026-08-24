@@ -348,7 +348,6 @@ def main() -> int:
     protocol = ProtocolConfig(name="strict_v01", mode="strict_on_policy")
 
     t_start = time.perf_counter()
-    server = start_server(out_dir / "vllm_server.log")
     metrics: dict = {"run_id": run_id, "task": args.task, "estimator": args.estimator,
                      "seed": args.seed, "epochs": args.epochs, "epoch_metrics": []}
     all_records: list[dict] = []
@@ -359,7 +358,9 @@ def main() -> int:
     runtime.set_load_epoch(1)
     sync_ref = EventRef(uri="", event_id=canary_v0.event_id, event_sha256=canary_v0.event_sha256)
 
+    server: subprocess.Popen | None = None
     try:
+        server = start_server(out_dir / "vllm_server.log")
         client = VLLMClient(base_url=f"http://127.0.0.1:{VLLM_PORT}", group_port=GROUP_PORT, connection_timeout=300)
 
         from peft import LoraConfig, get_peft_model
