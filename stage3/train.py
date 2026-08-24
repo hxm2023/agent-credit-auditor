@@ -41,8 +41,8 @@ import numpy as np
 STAGE3_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(STAGE3_DIR))
 
-from stage3.credit import decision_positions  # noqa: E402
-from stage3.tasks import TASKS, parse_tool_calls  # noqa: E402
+from credit import decision_positions  # noqa: E402
+from tasks import TASKS, parse_tool_calls  # noqa: E402
 
 MODEL_PATH = os.environ.get("GRPO_GUARD_MODEL_PATH", "/root/autodl-tmp/models/Qwen3-4B")
 VLLM_PORT = int(os.environ.get("STAGE3_VLLM_PORT", "8007"))
@@ -467,7 +467,7 @@ def main() -> int:
                     pos_weights.append(pw)
             elif args.estimator == "paired":
                 # U matrix: (decision slots x 2 branches); branch = half of the gens
-                from stage3.credit import paired_credit
+                from credit import paired_credit
                 half = args.gens // 2
                 k = max(len(parse_tool_calls(r["text"])) for r in rows)
                 U = np.zeros((max(k, 1), 2))
