@@ -13,10 +13,18 @@ mkdir -p "$OUT"
 pick_gpu() {
   for i in 6 7 4 0 1 2; do
     used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -i $i 2>/dev/null | tr -d ' ')
-    if [ -n "$used" ] && [ "$used" -le 1024 ]; then
-      echo $i
-      return 0
-    fi
+    [ -n "$used" ] && [ "$used" -le 1024 ] || continue
+    # skip GPUs that already host one of OUR trainers (multi-launcher safety)
+    own=0
+    uuid=$(nvidia-smi --query-gpu=uuid --format=csv,noheader -i $i 2>/dev/null)
+    for line in $(nvidia-smi --query-compute-apps=pid,gpu_uuid --format=csv,noheader 2>/dev/null); do
+      pid=${line%,*}; puuid=${line#*,}
+      if [ "$puuid" = "$uuid" ] && strings /proc/$pid/cmdline 2>/dev/null | grep -q 'stage3/train.py'; then
+        own=1
+        break
+      fi
+    done
+    [ "$own" -eq 0 ] && { echo $i; return 0; }
   done
   return 1
 }
