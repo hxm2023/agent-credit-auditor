@@ -2,14 +2,14 @@
 
 One training run = (task x estimator x seed). The loop follows r002's
 verified Guard chain (identity validation -> reward -> pre-update ALLOW ->
-materialize -> guarded update -> commit adapter -> canary) and extends it to
-E epochs:
+materialize -> guarded update -> commit adapter -> canary) over E epochs:
 
-- epoch 0:   rollout via the vLLM generation service (base policy, Guard
-             behavior_logprob_source="generation_service")
-- epoch >=1: rollout by the trainer's OWN current policy on GPU0 (the policy
-             that generated the sequences scores them exactly, declared as
-             Guard behavior_logprob_source="exact_behavior_scorer")
+- ALL epochs roll out with the trainer's own current policy on GPU0 (the
+  policy that generated the sequences scores them exactly, declared as
+  Guard behavior_logprob_source="exact_behavior_scorer", schema 7.5).
+  The vLLM generation-service mode is NOT exercised: vLLM 0.26 cannot
+  initialize on this server's Blackwell GPU (SM 12.x requires a newer
+  vLLM) — recorded in the run metrics as a documented limitation.
 - credit:    dense GRPO / local-decision / paired-branch (stage3.credit)
 
 Per-epoch and final metrics: success rate, mean utility, mean call count,
@@ -77,7 +77,8 @@ def start_server(server_log: Path) -> subprocess.Popen:
     trl_bin = os.path.join(os.path.dirname(sys.executable), "trl")
     proc = subprocess.Popen(
         [trl_bin, "vllm-serve", "--model", MODEL_PATH, "--port", str(VLLM_PORT),
-         "--gpu-memory-utilization", "0.4", "--max-model-len", "2048"],
+         "--gpu-memory-utilization", "0.3", "--max-model-len", "1024",
+         "--enforce-eager"],
         env={**os.environ, "CUDA_VISIBLE_DEVICES": "1"},
         stdout=open(server_log, "w"), stderr=subprocess.STDOUT,
         start_new_session=True,
@@ -166,16 +167,23 @@ def lora_manifest(base: dict, adapter_path: Path, policy_version: int) -> dict:
     return m
 
 
-def build_envelope(run_id, gen, rew, id_decision, ckpt_sha, split, stage, parent_ver, update_id, parent_sha=None, source="generation_service"):
+def build_envelope(run_id, gen, rew, id_decision, ckpt_sha, split, stage, parent_ver, update_id,
+                   parent_sha=None, source="generation_service", scoring=None):
     from grpo_guard.schema.artifacts import EventRef, ManifestRef
     from grpo_guard.schema.envelope import TrajectoryEnvelope, TrainingContract
     from grpo_guard.store.canonical_json import canonical_sha256
+
+    # exact_behavior_scorer mode: the authoritative logprob event is the
+    # SCORING event (L002), not the generation event
+    auth_ref = EventRef(uri="", event_id=scoring.event_id, event_sha256=scoring.event_sha256) if scoring else (
+        EventRef(uri="", event_id=gen.event_id, event_sha256=gen.event_sha256))
+    scoring_ref = EventRef(uri="", event_id=scoring.event_id, event_sha256=scoring.event_sha256) if scoring else None
 
     return TrajectoryEnvelope(
         envelope_id=f"env-{gen.event_id}-{stage}",
         envelope_stage=stage, run_id=run_id, request_id=gen.request_id,
         generation_event=EventRef(uri="", event_id=gen.event_id, event_sha256=gen.event_sha256),
-        scoring_event=None,
+        scoring_event=scoring_ref,
         reward_event=EventRef(uri="", event_id=rew.event_id, event_sha256=rew.event_sha256) if rew else None,
         policy_manifest=ManifestRef(uri="", manifest_id=f"pm-{parent_ver}", sha256=ckpt_sha),
         split_manifest=ManifestRef(uri="", manifest_id=split["split_id"], sha256=canonical_sha256(split)),
@@ -185,8 +193,7 @@ def build_envelope(run_id, gen, rew, id_decision, ckpt_sha, split, stage, parent
             protocol="strict_on_policy", trainer_parent_policy_version=parent_ver,
             consuming_update_id=update_id, max_policy_lag_versions=0,
             behavior_logprob_source=source,
-            authoritative_behavior_logprob_event=EventRef(
-                uri="", event_id=gen.event_id, event_sha256=gen.event_sha256),
+            authoritative_behavior_logprob_event=auth_ref,
             diagnostic_non_authoritative_logprobs_allowed=False,
         ),
     ).seal()
@@ -196,7 +203,6 @@ def patch_device_normalization() -> None:
     import torch
     import trl
     import vllm
-    from trl.generation.vllm_client import VLLMClient
     assert trl.__version__ == "1.10.0" and vllm.__version__ == "0.26.0"
     _orig = VLLMClient.init_communicator
 
@@ -208,9 +214,58 @@ def patch_device_normalization() -> None:
     VLLMClient.init_communicator = _normalized
 
 
+# ---------------------------------------------------------------- old logprobs
+
+def compute_old_logprobs(model, rows: list[dict], tokenizer) -> None:
+    """Exact per-token logprobs of the row sequences under the CURRENT model.
+    Computed PER ROW (batch 1): the vLLM batched responses can carry padded
+    sequences near max-model-len, and a padded multi-row forward would
+    materialize ~80 GB of float logits. At epoch 0 the LoRA weights are zero,
+    so this is exactly the vLLM base policy's logprobs."""
+    import torch as _t
+
+    model.eval()
+    with _t.no_grad():
+        for r in rows:
+            ids = _t.tensor(r["prompt_ids"] + r["seq"], dtype=_t.long,
+                            device=next(model.parameters()).device).unsqueeze(0)
+            plen = len(r["prompt_ids"])
+            gen_len = len(r["seq"])
+            logits = model(ids).logits
+            logps = _t.log_softmax(logits.float(), dim=-1)
+            gen = _t.tensor(r["seq"], dtype=_t.long, device=ids.device).unsqueeze(-1)
+            r["old_logprobs"] = logps[0, plen - 1:plen - 1 + gen_len, :].gather(-1, gen).squeeze(-1).tolist()
+            del logits, logps, ids
+    model.train()
+
+
 # ---------------------------------------------------------------- estimator loss
 
 def stage3_loss(model, handles, pos_weights, group_size, clip_epsilon=0.2):
+    """Chunked wrapper with per-chunk backward (summing chunk losses into one
+    tensor retains every chunk's autograd graph and OOMs). Each chunk's loss
+    is backward'd immediately; the returned loss is the credit-weighted mean
+    of the chunk losses (already backward'd; callers must not backward
+    again)."""
+    import torch as _t
+
+    CHUNK = 16
+    loss_sum = 0.0
+    total_weight = 0.0
+    for i in range(0, len(handles), CHUNK):
+        chunk_h = handles[i:i + CHUNK]
+        chunk_pw = pos_weights[i:i + CHUNK]
+        loss, metrics = _stage3_loss_chunk(model, chunk_h, chunk_pw, group_size, clip_epsilon)
+        w = metrics["credit_positions"]
+        loss.backward()
+        loss_sum += float(loss.item()) * w
+        total_weight += w
+    if total_weight <= 0:
+        total_weight = 1.0
+    return _t.tensor(loss_sum / total_weight, device=next(model.parameters()).device), {"loss": loss_sum / total_weight, "chunks": True}
+
+
+def _stage3_loss_chunk(model, handles, pos_weights, group_size, clip_epsilon=0.2):
     """Custom credit loss mirroring the Guard's grpo_loss math, but with a
     per-position credit mask (decision positions only for local/paired) and
     DIRECT per-position weights (no re-centering — the gated paired credit
@@ -258,11 +313,13 @@ def stage3_loss(model, handles, pos_weights, group_size, clip_epsilon=0.2):
 
     per_token = -_t.min(ratio, clipped) * weights
     per_token = per_token * credit_mask.float()
-    loss = per_token.sum() / (credit_mask.float().sum() + 1e-9)
+    n_credit = credit_mask.float().sum().item()
+    loss = per_token.sum() / (n_credit + 1e-9)
 
     masked_ratio = ratio[credit_mask]
     metrics = {
         "loss": float(loss.item()),
+        "credit_positions": n_credit,
         "ratio_p50": float(_t.quantile(masked_ratio, 0.5).item()) if masked_ratio.numel() else float("nan"),
         "clip_fraction": float(((masked_ratio < 1.0 - clip_epsilon) | (masked_ratio > 1.0 + clip_epsilon)).float().mean().item())
         if masked_ratio.numel() else 0.0,
@@ -287,7 +344,6 @@ def main() -> int:
 
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    from trl.generation.vllm_client import VLLMClient
 
     from grpo_guard.adapters.guarded_update import GuardedUpdateAdapter, materialize
     from grpo_guard.adapters.grpo_loss import grpo_loss
@@ -314,7 +370,6 @@ def main() -> int:
     run_id = f"{run_name}-{int(time.time())}"
     sampling_sha = hashlib.sha256(f"stage3-{args.task}-{args.estimator}-{args.seed}-temp1.0".encode()).hexdigest()
     tok_sha, tpl_sha = compute_identity_hashes()
-    patch_device_normalization()
 
     store_ = ArtifactStore(out_dir / "store")
     log_ = AppendLog(out_dir / "events", run_id=run_id, lease_id="stage3-trainer")
@@ -349,7 +404,9 @@ def main() -> int:
 
     t_start = time.perf_counter()
     metrics: dict = {"run_id": run_id, "task": args.task, "estimator": args.estimator,
-                     "seed": args.seed, "epochs": args.epochs, "epoch_metrics": []}
+                     "seed": args.seed, "epochs": args.epochs, "epoch_metrics": [],
+                     "rollout_backend": "trainer_sampler_exact_behavior_scorer",
+                     "vllm_unavailable": "vLLM 0.26 cannot initialize on SM 12.x (Blackwell); all epochs use the trainer's own sampler with Guard exact_behavior_scorer mode"}
     all_records: list[dict] = []
     ckpt_cur = base_manifest(0, tok_sha, tpl_sha, run_name)
     sync_v0 = control.sync_chain(0, ckpt_cur["checkpoint_manifest_sha256"], epoch, required_epoch=epoch)
@@ -358,11 +415,7 @@ def main() -> int:
     runtime.set_load_epoch(1)
     sync_ref = EventRef(uri="", event_id=canary_v0.event_id, event_sha256=canary_v0.event_sha256)
 
-    server: subprocess.Popen | None = None
     try:
-        server = start_server(out_dir / "vllm_server.log")
-        client = VLLMClient(base_url=f"http://127.0.0.1:{VLLM_PORT}", group_port=GROUP_PORT, connection_timeout=300)
-
         from peft import LoraConfig, get_peft_model
         base = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map="cuda:0")
         base.eval()
@@ -377,35 +430,44 @@ def main() -> int:
         log(f"LoRA trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
 
         def train_sampler_rollout(policy_version: int) -> list[dict]:
-            """Rollout by the trainer's own current policy (GPU0 sampling)."""
+            """Rollout by the trainer's own current policy (GPU0 sampling),
+            batched 8 prompts per generate call (per-prompt calls were ~65s
+            each — the client round-trip dominated)."""
             import torch as _t
 
             model.eval()
             rows = []
             with _t.no_grad():
-                for p in prompts:
-                    ids = tokenizer(p["text"], return_tensors="pt").input_ids.to("cuda:0")
+                for i in range(0, len(prompts), 8):
+                    chunk = prompts[i:i + 8]
+                    ids = tokenizer([p["text"] for p in chunk], return_tensors="pt",
+                                    padding=True).input_ids.to("cuda:0")
                     for g in range(args.gens):
                         out = model.generate(
                             ids, max_new_tokens=MAX_COMPLETION, do_sample=True,
                             temperature=1.0, top_p=1.0, pad_token_id=tokenizer.eos_token_id,
                         )
-                        cid = out[0, ids.shape[1]:].tolist()
-                        text = tokenizer.decode(cid, skip_special_tokens=True)
-                        with _t.no_grad():
-                            logits = model(out).logits[0, ids.shape[1] - 1:-1, :].float()
-                            lp = _t.log_softmax(logits, dim=-1).gather(-1, out[0, ids.shape[1]:].unsqueeze(-1)).squeeze(-1).tolist()
-                        rows.append({"prompt": p, "text": text, "seq": cid, "pos": decision_positions(text, tokenizer, cid),
-                                     "prompt_len": int(ids.shape[1]), "prompt_ids": ids[0].tolist(), "old_logprobs": lp})
+                        logits = model(out).logits.float()
+                        logps = _t.log_softmax(logits, dim=-1)
+                        for j, p in enumerate(chunk):
+                            plen = int(ids[j].ne(tokenizer.pad_token_id).sum().item()) if tokenizer.pad_token_id is not None else int(ids.shape[1])
+                            cid = out[j, plen:].tolist()
+                            text = tokenizer.decode(cid, skip_special_tokens=True)
+                            gen = out[j, plen:].unsqueeze(-1)
+                            lp = logps[j, plen - 1:-1, :].gather(-1, gen).squeeze(-1).tolist()
+                            rows.append({"prompt": p, "text": text, "seq": cid, "pos": decision_positions(text, tokenizer, cid),
+                                         "prompt_len": plen, "prompt_ids": ids[j, :plen].tolist(), "old_logprobs": lp})
             model.train()
             return rows
 
         def emit_and_validate(rows: list[dict], policy_version: int, source: str, epoch_no: int) -> list[dict]:
+            from grpo_guard.schema.events import ScoringEvent
+
             out_rows = []
             for row in rows:
                 p = row["prompt"]
                 gen = runtime.emit_generation(
-                    row["prompt_ids"], row["seq"], row.get("old_logprobs"),
+                    row["prompt_ids"], row["seq"], row.get("old_logprobs") if source == "generation_service" else None,
                     behavior_policy_version=policy_version,
                     checkpoint_manifest_sha256=ckpt_cur["checkpoint_manifest_sha256"],
                     sync_event=sync_ref, tokenizer_sha256=tok_sha, chat_template_sha256=tpl_sha,
@@ -413,8 +475,29 @@ def main() -> int:
                     request_id=f"req-v{policy_version}-{p['prompt_id']}-{row['text'][:8]}",
                     required_epoch=epoch_no,
                 )
+                scoring = None
+                if source == "exact_behavior_scorer":
+                    # the trainer IS the exact behavior scorer: store its
+                    # computed logprobs and emit the scoring event (L002)
+                    lp_arr = np.asarray(row["old_logprobs"], dtype=np.float32)
+                    lp_ref = store_.put(lp_arr.tobytes(), "application/octet-stream", gen.event_id,
+                                        dtype="float32", shape=[len(lp_arr)])
+                    scoring = ScoringEvent(
+                        event_id=f"scoring-{gen.event_id}", event_type="behavior_scoring_finished",
+                        run_id=run_id, component_id="stage3-trainer", lifecycle_seq=next_lifecycle(),
+                        created_at_utc=now_utc(),
+                        input_events=[EventRef(uri="", event_id=gen.event_id, event_sha256=gen.event_sha256)],
+                        source_generation_event=EventRef(uri="", event_id=gen.event_id, event_sha256=gen.event_sha256),
+                        scorer_policy_version=policy_version,
+                        scorer_checkpoint_manifest_sha256=ckpt_cur["checkpoint_manifest_sha256"],
+                        token_artifact_sha256=gen.sequence_token_ids.sha256,
+                        scoring_dtype="fp32",
+                        behavior_logprobs=lp_ref,
+                    ).seal()
+                    log_.append(scoring, required_epoch=epoch_no)
                 env = build_envelope(run_id, gen, None, None, ckpt_cur["checkpoint_manifest_sha256"],
-                                     split_manifest, "pre_reward", policy_version, f"update-{policy_version+1}", source=source)
+                                     split_manifest, "pre_reward", policy_version, f"update-{policy_version+1}",
+                                     source=source, scoring=scoring)
                 ctx = ValidationContext(envelope=env, store=store_, events=all_events(),
                                         policy_manifest=manifest_model(ckpt_cur), split_manifest=split_model(split_manifest),
                                         protocol=protocol)
@@ -423,26 +506,20 @@ def main() -> int:
                     raise RuntimeError(f"identity FAILED {env.envelope_id}: {decision.decision_payload.reason_codes}")
                 log_.append(decision, required_epoch=epoch_no)
                 row["gen"] = gen
+                row["scoring"] = scoring
                 row["id_decision"] = decision
                 out_rows.append(row)
             return out_rows
 
         for e in range(args.epochs):
             policy_version = e
-            if e == 0:
-                rows = []
-                for p in prompts:
-                    for g in range(args.gens):
-                        res = client.generate([p["text"]], n=1, temperature=1.0, top_p=1.0,
-                                              top_k=0, max_tokens=MAX_COMPLETION, logprobs=1)
-                        pid, cid, lps, _ = (res["prompt_ids"], res["completion_ids"], res.get("logprobs"), res.get("logprob_token_ids"))
-                        text = tokenizer.decode(cid[0], skip_special_tokens=True)
-                        rows.append({"prompt": p, "text": text, "seq": cid[0], "pos": decision_positions(text, tokenizer, cid[0]),
-                                     "prompt_len": len(pid[0]), "prompt_ids": pid[0],
-                                     "old_logprobs": [lp[0] for lp in lps[0]] if lps and lps[0] else []})
-                rows = emit_and_validate(rows, 0, "generation_service", epoch)
-            else:
-                rows = emit_and_validate(train_sampler_rollout(policy_version), policy_version, "exact_behavior_scorer", epoch)
+            # ALL epochs roll out with the trainer's own current policy (the
+            # vLLM generation-service mode is unavailable: vLLM 0.26 cannot
+            # initialize on this server's Blackwell GPU, SM 12.x requires a
+            # newer vLLM — documented limitation). The trainer generates AND
+            # scores exactly (Guard behavior_logprob_source =
+            # "exact_behavior_scorer", schema 7.5): on-policy and closed.
+            rows = emit_and_validate(train_sampler_rollout(policy_version), policy_version, "exact_behavior_scorer", epoch)
 
             # reward + export records
             for row in rows:
@@ -509,7 +586,8 @@ def main() -> int:
                 log_.append(rew, required_epoch=epoch)
                 pre = build_envelope(run_id, gen, rew, row["id_decision"], ckpt_cur["checkpoint_manifest_sha256"],
                                      split_manifest, "pre_update", policy_version, f"update-{policy_version+1}",
-                                     source=("generation_service" if e == 0 else "exact_behavior_scorer"))
+                                     source="exact_behavior_scorer",
+                                     scoring=row.get("scoring"))
                 ctx = ValidationContext(envelope=pre, store=store_, events=all_events(),
                                         policy_manifest=manifest_model(ckpt_cur), split_manifest=split_model(split_manifest),
                                         protocol=protocol)
@@ -517,13 +595,14 @@ def main() -> int:
                 if decision.decision_payload.decision != "allow":
                     raise RuntimeError(f"pre-update FAILED {pre.envelope_id}: {decision.decision_payload.reason_codes}")
                 log_.append(decision, required_epoch=epoch)
+                scoring = row.get("scoring")
                 h = materialize(
                     store=store_, run_id=run_id, update_id=f"update-{policy_version+1}",
                     preupdate_envelope=pre.ref(),
                     validation_decision=EventRef(uri="", event_id=decision.event_id, event_sha256=decision.event_sha256),
                     sequence_ref=gen.sequence_token_ids, loss_mask_ref=gen.loss_mask,
-                    logprob_event_ref=pre.training_contract.authoritative_behavior_logprob_event,
-                    logprob_ref=gen.service_behavior_logprobs,
+                    logprob_event_ref=EventRef(uri="", event_id=scoring.event_id, event_sha256=scoring.event_sha256) if scoring else pre.training_contract.authoritative_behavior_logprob_event,
+                    logprob_ref=scoring.behavior_logprobs if scoring else gen.service_behavior_logprobs,
                     reward_event_ref=EventRef(uri="", event_id=rew.event_id, event_sha256=rew.event_sha256),
                     nonce=f"nonce-{gen.event_id}", rewards=np.asarray([a], dtype=np.float32),
                     lifecycle_seq=next_lifecycle(),
@@ -539,11 +618,22 @@ def main() -> int:
             optimizer.zero_grad()
             h_list = [h for h, _ in handles]
             if args.estimator == "dense":
-                loss_res = grpo_loss(model, h_list, group_size=args.gens)
+                # chunked with PER-CHUNK backward: summing the chunk losses
+                # into one tensor retains every chunk's autograd graph (the
+                # float logits), which OOMs at 256 rows.
+                loss_sum = 0.0
+                tot_w = 0.0
+                for ci in range(0, len(h_list), 16):
+                    lr = grpo_loss(model, h_list[ci:ci + 16], group_size=args.gens)
+                    w = lr.metrics["B"]
+                    lr.loss.backward()
+                    loss_sum += float(lr.loss.item()) * w
+                    tot_w += w
+                loss_res = SimpleNamespace(loss=None, metrics={"loss": loss_sum / tot_w, "chunks": True})
             else:
                 loss, lmetrics = stage3_loss(model, h_list, pos_weights, group_size=args.gens)
                 loss_res = SimpleNamespace(loss=loss, metrics=lmetrics)
-            loss_res.loss.backward()
+                loss_res.loss.backward()
             grad_l2 = float(sum(p.grad.norm().item() ** 2 for p in model.parameters() if p.grad is not None) ** 0.5)
             optimizer.step()
             log(f"epoch {e}: loss={loss_res.metrics['loss']:.4f} grad_l2={grad_l2:.4f}")
@@ -575,6 +665,10 @@ def main() -> int:
             })
 
         metrics["gpu_seconds"] = time.perf_counter() - t_start
+
+        # free the training models before the eval copies (GPU0 memory)
+        del base, model, optimizer
+        torch.cuda.empty_cache()
 
         # final evaluation: FINAL checkpoint adapter on held-out prompts
         from peft import PeftModel
@@ -610,7 +704,7 @@ def main() -> int:
         log(f"final eval: {metrics['final_eval']} kl={metrics['kl_drift_vs_base']}")
 
     finally:
-        stop_server(server)
+        pass
 
     # export trajectory records for the Auditor's Stage-1 audit
     rec_path = out_dir / "trajectory_records.jsonl"

@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Stage 3 full matrix launcher (runs on autodl2): 2 tasks x 3 estimators x
-# 3 seeds = 18 Guard-supervised GRPO runs, sequential (GPU0 trainer + GPU1
-# vLLM each), matched budgets (32 prompts x 8 gens x 3 epochs, LoRA rank 16,
-# lr 5e-6). Per run: metrics.json + Guard event/store + trajectory records.
+# 3 seeds = 18 Guard-supervised GRPO runs, sequential (GPU0 trainer only —
+# all rollouts use the trainer's own sampler; vLLM is unavailable on this
+# server's Blackwell GPU), matched budgets (32 prompts x 8 gens x 3 epochs,
+# LoRA rank 16, lr 5e-6). Per run: metrics.json + Guard event/store +
+# trajectory records. Each run gets up to 3 attempts (an infra kill must not
+# abort the matrix).
 #
 # Usage (on autodl2): bash stage3/run_matrix.sh [OUT]  (nohup-friendly)
-set -euo pipefail
+set -uo pipefail
 STAGE3=/root/autodl-tmp/agent-ttrl/stage3
 OUT=${1:-$STAGE3/out}
 PY=/root/autodl-tmp/grpo-guard/.venv/bin/python
@@ -17,7 +20,7 @@ start_tau2() {
   if ! curl -s -m 2 -X POST http://127.0.0.1:8800/reset > /dev/null 2>&1; then
     echo "== starting tau2 server =="
     TAU2_SERVER_PORT=8800 nohup /root/autodl-tmp/appworld-venv/bin/python \
-      /root/autodl-tmp/agent-ttrl/scripts/tau2_server.py > "$TAU2_LOG" 2>&1 &
+      /root/autodl-tmp/agent-ttrl/scripts/tau2_server.py > "$TAU2_LOG" 2>&1 < /dev/null &
     sleep 8
   fi
   curl -s -m 5 -X POST http://127.0.0.1:8800/reset > /dev/null && echo "tau2 server ok"
@@ -34,12 +37,22 @@ for task in cts_order tau2_retail; do
         echo "skip (exists): $run"
         continue
       fi
-      echo "== run: $task $estimator seed=$seed =="
-      STAGE3_VLLM_PORT=$((8007 + seed)) STAGE3_GROUP_PORT=$((51227 + seed)) \
-        "$PY" "$STAGE3/train.py" --task "$task" --estimator "$estimator" \
-        --seed "$seed" --out "$run" --prompts 32 --gens 8 --epochs 3 \
-        > "$OUT/${task}_${estimator}_s${seed}.log" 2>&1
-      echo "== done: $run (rc=$?) =="
+      for attempt in 1 2 3; do
+        echo "== run: $task $estimator seed=$seed (attempt $attempt) =="
+        PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+          "$PY" "$STAGE3/train.py" --task "$task" --estimator "$estimator" \
+          --seed "$seed" --out "$run" --prompts 32 --gens 8 --epochs 3 \
+          > "$OUT/${task}_${estimator}_s${seed}.log" 2>&1
+        rc=$?
+        if [ -f "$run/metrics.json" ]; then
+          echo "== done: $run (rc=$rc) =="
+          break
+        fi
+        echo "== failed (rc=$rc), attempt $attempt of 3 =="
+        # clean any GPU residue between attempts
+        for pid in $(nvidia-smi --query-compute-apps=pid --format=csv,noheader); do kill -9 $pid 2>/dev/null; done
+        sleep 5
+      done
     done
   done
 done
