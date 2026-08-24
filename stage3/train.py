@@ -44,7 +44,7 @@ sys.path.insert(0, str(STAGE3_DIR))
 from credit import decision_positions  # noqa: E402
 from tasks import TASKS, parse_tool_calls  # noqa: E402
 
-MODEL_PATH = os.environ.get("GRPO_GUARD_MODEL_PATH", "/root/autodl-tmp/models/Qwen3-4B")
+MODEL_PATH = os.environ.get("GRPO_GUARD_MODEL_PATH", "/data_3/repo/agood/models_cache/models--Qwen--Qwen3-4B/snapshots/")
 VLLM_PORT = int(os.environ.get("STAGE3_VLLM_PORT", "8007"))
 GROUP_PORT = int(os.environ.get("STAGE3_GROUP_PORT", "51227"))
 REPO_DIR = Path(os.environ.get("GRPO_GUARD_REPO", "/root/autodl-tmp/grpo-guard-src"))
@@ -57,6 +57,7 @@ LORA_RANK = 16
 LORA_ALPHA = 32
 LR = 5.0e-6
 N_EVAL_PROMPTS = 16
+DEVICE = os.environ.get("STAGE3_CUDA_DEVICE", "cuda:0")
 
 
 def log(msg: str) -> None:
@@ -137,7 +138,7 @@ def base_manifest(policy_version: int, tok_sha: str, tpl_sha: str, run_name: str
     return {
         "manifest_id": f"pm-{policy_version}",
         "model_id": "Qwen/Qwen3-4B",
-        "model_revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+        "model_revision": os.environ.get("GRPO_GUARD_MODEL_REVISION", "auto"),
         "policy_version": policy_version,
         "parent_policy_version": None,
         "weights": weights,
@@ -249,7 +250,7 @@ def stage3_loss(model, handles, pos_weights, group_size, clip_epsilon=0.2):
     again)."""
     import torch as _t
 
-    CHUNK = 16
+    CHUNK = 8
     loss_sum = 0.0
     total_weight = 0.0
     for i in range(0, len(handles), CHUNK):
@@ -417,7 +418,7 @@ def main() -> int:
 
     try:
         from peft import LoraConfig, get_peft_model
-        base = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map="cuda:0")
+        base = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map=DEVICE)
         base.eval()
         lora_cfg = LoraConfig(
             r=LORA_RANK, lora_alpha=LORA_ALPHA, lora_dropout=0.0,
@@ -441,8 +442,8 @@ def main() -> int:
                 for i in range(0, len(prompts), 8):
                     chunk = prompts[i:i + 8]
                     enc = tokenizer([p["text"] for p in chunk], return_tensors="pt", padding=True)
-                    ids = enc.input_ids.to("cuda:0")
-                    attn = enc.attention_mask.to("cuda:0")
+                    ids = enc.input_ids.to(DEVICE)
+                    attn = enc.attention_mask.to(DEVICE)
                     for g in range(args.gens):
                         out = model.generate(
                             ids, attention_mask=attn, max_new_tokens=MAX_COMPLETION, do_sample=True,
@@ -624,8 +625,8 @@ def main() -> int:
                 # float logits), which OOMs at 256 rows.
                 loss_sum = 0.0
                 tot_w = 0.0
-                for ci in range(0, len(h_list), 16):
-                    lr = grpo_loss(model, h_list[ci:ci + 16], group_size=args.gens)
+                for ci in range(0, len(h_list), 8):
+                    lr = grpo_loss(model, h_list[ci:ci + 8], group_size=args.gens)
                     w = lr.metrics["B"]
                     lr.loss.backward()
                     loss_sum += float(lr.loss.item()) * w
@@ -674,13 +675,13 @@ def main() -> int:
         # final evaluation: FINAL checkpoint adapter on held-out prompts
         from peft import PeftModel
         eval_model = PeftModel.from_pretrained(
-            AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map="cuda:0").eval(),
+            AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map=DEVICE).eval(),
             str(out_dir / f"adapter_v{args.epochs}"),
         ).eval()
         completions = []
         with torch.no_grad():
             for p in eval_prompts:
-                ids = tokenizer(p["text"], return_tensors="pt").input_ids.to("cuda:0")
+                ids = tokenizer(p["text"], return_tensors="pt").input_ids.to(DEVICE)
                 out = eval_model.generate(ids, max_new_tokens=MAX_COMPLETION, do_sample=False,
                                           pad_token_id=tokenizer.eos_token_id)
                 completions.append(tokenizer.decode(out[0, ids.shape[1]:], skip_special_tokens=True))
@@ -688,12 +689,12 @@ def main() -> int:
         metrics["final_adapter_sha256"] = ckpt_cur["adapter_sha256"]
 
         # KL drift vs base on eval prompts (mean log-ratio over generated tokens)
-        base_eval = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map="cuda:0").eval()
+        base_eval = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.bfloat16, device_map=DEVICE).eval()
         kl_scores = []
         with torch.no_grad():
             for p, text in zip(eval_prompts, completions):
                 plen = len(tokenizer(p["text"], return_tensors="pt").input_ids[0])
-                ids = tokenizer(p["text"] + text, return_tensors="pt").input_ids.to("cuda:0")
+                ids = tokenizer(p["text"] + text, return_tensors="pt").input_ids.to(DEVICE)
                 gen_ids = ids[0, plen:]
                 lp_a = eval_model(ids).logits[0, plen - 1:-1, :].float().log_softmax(-1)
                 lp_b = base_eval(ids).logits[0, plen - 1:-1, :].float().log_softmax(-1)
