@@ -93,6 +93,26 @@ tests/           math units, oracle independence, protocol/evidence, fault injec
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
 
+## v0.2-prep additions — Stage 3: matched-budget real closed loop (jindun)
+
+The review's Stage 3 executed end-to-end: 18 Guard-supervised real GRPO runs
+(2 tool-use tasks x 3 credit estimators x 3 seeds, Qwen3-4B LoRA, 32 prompts
+x 8 gens x 3 epochs) on the jindun A800 server, one GPU at a time, yielding
+to concurrent user jobs. Results (`stage3/REPORT.md`, pre-registered
+predictions in `stage3/PREDICTIONS.md`, raw metrics + trajectory records in
+`artifacts/stage3_jindun/`):
+
+- dense/local produce real Guard-validated updates every epoch; the
+  paired-branch reliability gate abstained in ALL 9 cts_order runs (zero
+  credit -> zero updates) — a conservative-gate finding, not a bug
+- tau2_retail: base Qwen3-4B produced no valid tool calls (invalid_rate
+  1.0) — all-zero rewards, an honest task/model negative
+- prediction P1 VOID (no final-success differentiation at this update
+  scale), P2 CONFIRMED (paired abstains), P3 INCONCLUSIVE, P4 partial
+- execution limits: vLLM 0.26 unavailable on both servers' GPUs (SM 12.x
+  on autodl2; env mismatch on jindun) — all rollouts used the trainer's own
+  sampler with Guard `exact_behavior_scorer` mode (schema 7.5)
+
 ## v0.2-prep additions — real-trajectory bridge, Stages 1-2
 
 The external review direction: the Auditor must audit the data the optimizer
