@@ -114,7 +114,9 @@ def render(collection: dict) -> str:
     for task in TASKS:
         lines.append(f"## {task}")
         lines.append("")
-        lines.append("| estimator | seeds done | final success | mean_u | grad_l2 (mean over epochs) | KL drift | invalid | GPU s |")
+        lines.append(
+            "| estimator | seeds done | final success | mean_u | grad_l2 (mean over epochs) | KL drift | invalid | GPU s |"
+        )
         lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
         for est in ESTIMATORS:
             ms = [runs[k]["metrics"] for k in runs if runs[k]["task"] == task and runs[k]["estimator"] == est]
@@ -153,12 +155,14 @@ def render(collection: dict) -> str:
     lines.append("")
     lines.append("| Prediction | Verdict | Evidence |")
     lines.append("|---|---|---|")
-    p1 = _prediction_1(runs)
-    p2 = _prediction_2(runs)
-    p3 = _prediction_3(runs)
-    lines.append(f"| P1 ordering of final success | {p1[0]} | {p1[1]} |")
-    lines.append(f"| P2 gradient variance ordering | {p2[0]} | {p2[1]} |")
-    lines.append(f"| P3 KL drift ordering | {p3[0]} | {p3[1]} |")
+    for task in TASKS:
+        task_runs = {k: v for k, v in runs.items() if v["task"] == task}
+        p1 = _prediction_1(task_runs)
+        p2 = _prediction_2(task_runs)
+        p3 = _prediction_3(task_runs)
+        lines.append(f"| P1 ordering of final success ({task}) | {p1[0]} | {p1[1]} |")
+        lines.append(f"| P2 gradient variance ordering ({task}) | {p2[0]} | {p2[1]} |")
+        lines.append(f"| P3 KL drift ordering ({task}) | {p3[0]} | {p3[1]} |")
     lines.append("")
 
     # trajectory audit summary
@@ -228,12 +232,17 @@ def _prediction_2(runs: dict) -> tuple[str, str]:
     if len(est_grad) < 3:
         return "INSUFFICIENT", "runs missing"
     means = {e: _mean(est_grad[e]) for e in est_grad}
+    if max(means.values()) - min(means.values()) < 1e-9:
+        return "VOID", f"all estimators equal ({means['dense']:.4f}) — no signal to rank"
     order = sorted(means, key=lambda e: means[e], reverse=True)
     ok = order[0] == "dense" and order[-1] == "paired"
     note = ""
     if means["dense"] > 0 and means["local"] > 0 and abs(means["dense"] - means["local"]) / means["dense"] < 0.1:
         note = " (dense ~= local; paired abstains)"
-    return ("CONFIRMED" if ok else "FALSIFIED", " > ".join(order) + f" ({ {e: _fmt(v) for e, v in means.items()} })" + note)
+    return (
+        "CONFIRMED" if ok else "FALSIFIED",
+        " > ".join(order) + f" ({ {e: _fmt(v) for e, v in means.items()} })" + note,
+    )
 
 
 def _prediction_3(runs: dict) -> tuple[str, str]:
@@ -252,7 +261,10 @@ def _prediction_3(runs: dict) -> tuple[str, str]:
     note = ""
     if means["paired"] == 0.0:
         note = " (paired's 0.0 = zero updates/gate abstention, not mechanism KL)"
-    return ("CONFIRMED" if ok else "INCONCLUSIVE", " < ".join(order) + f" ({ {e: _fmt(v) for e, v in means.items()} })" + note)
+    return (
+        "CONFIRMED" if ok else "INCONCLUSIVE",
+        " < ".join(order) + f" ({ {e: _fmt(v) for e, v in means.items()} })" + note,
+    )
 
 
 def main() -> int:

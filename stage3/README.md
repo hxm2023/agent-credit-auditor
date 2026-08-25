@@ -1,4 +1,4 @@
-# Stage 3 — matched-budget real closed loop (autodl2)
+# Stage 3 — matched-budget real closed loop (jindun)
 
 The external review's Stage 3: 2 tool-use tasks x 3 credit estimators x
 3 seeds with matched rollout/token/optimizer budgets, final checkpoints,
@@ -35,25 +35,22 @@ variance, throughput). Written 2026-08-24; predictions pre-registered in
   `trajectory_records.jsonl` (aca-trajectory-record-1.0) for the Auditor's
   Stage-1 trajectory audit.
 
-## How to run (user-executed on autodl2; the Auditor agent was blocked from
-server execution by the auto-mode gate after upload)
+## How to run (on the jindun server; the final 18/18 matrix was executed by
+scripts/run_jindun_seq.sh + run_jindun_sweep.sh, one GPU at a time, free-card-only)
 
 ```bash
+# On jindun (js3.blockelite.cn, working folder /data_3/repo/agood/Agent-RL-Credit-Auditor):
 # 1. tau2 server (needed only for the tau2_retail task)
-TAU2_SERVER_PORT=8800 nohup /root/autodl-tmp/appworld-venv/bin/python \
-  /root/autodl-tmp/agent-ttrl/scripts/tau2_server.py \
-  > /root/autodl-tmp/agent-ttrl/stage3/out/tau2_server.log 2>&1 < /dev/null &
+python3 stage3/tau2_server_jindun.py   # NotRequired shim for py3.10 included
 
 # 2. dry-run first (8 prompts, 1 epoch, cts_order x dense)
-/root/autodl-tmp/grpo-guard/.venv/bin/python /root/autodl-tmp/agent-ttrl/stage3/train.py \
-  --task cts_order --estimator dense --seed 1 \
-  --out /root/autodl-tmp/agent-ttrl/stage3/out/dryrun \
-  --prompts 8 --gens 4 --epochs 1
+GRPO_GUARD_REPO=/data_3/repo/agood/grpo-guard-src ATTRL_DIR=/data_3/repo/agood/agent-ttrl GRPO_GUARD_MODEL_PATH=/data_3/repo/agood/models_cache/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c STAGE3_CUDA_DEVICE=cuda:6 .venv_jindun/bin/python stage3/train.py   --task cts_order --estimator dense --seed 1 --out stage3/out_jindun/dryrun   --prompts 8 --gens 4 --epochs 1
 
-# 3. full matrix (18 runs, ~5-6 GPU hours, sequential; each run retries up
-#    to 3 times on infra kills)
-bash /root/autodl-tmp/agent-ttrl/stage3/run_matrix.sh \
-  > /root/autodl-tmp/agent-ttrl/stage3/matrix.log 2>&1 &
+# 3. full matrix (18 runs, one GPU at a time, free-card-only, yields to
+#    other users; 5 attempts per run)
+bash stage3/run_jindun_seq.sh
+bash stage3/run_jindun_sweep.sh   # fills any gaps -> 18/18
+```
 ```
 
 Result collection: `uv run python scripts/stage3_report.py <results_dir>` in

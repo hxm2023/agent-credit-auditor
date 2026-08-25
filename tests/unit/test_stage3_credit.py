@@ -2,6 +2,7 @@
 math (decision positions, advantage formulas, paired gate handling) and the
 task parsing helpers must be covered locally — the GPU training loop itself
 runs on the servers."""
+
 from __future__ import annotations
 
 import sys
@@ -45,8 +46,10 @@ def fake_gate(monkeypatch):
             # 2x2 with a clear winner: action 0 good, action 1 bad
             from types import SimpleNamespace
 
-            rows = [SimpleNamespace(credit=1.0, raw_credit=0.8, gate_passed=True),
-                    SimpleNamespace(credit=-1.0, raw_credit=-0.8, gate_passed=True)]
+            rows = [
+                SimpleNamespace(credit=1.0, raw_credit=0.8, gate_passed=True),
+                SimpleNamespace(credit=-1.0, raw_credit=-0.8, gate_passed=True),
+            ]
             return SimpleNamespace(status="OK", reason_code="", rows=rows)
 
     monkeypatch.setitem(sys.modules, "agent_ttrl", type(sys)("agent_ttrl"))

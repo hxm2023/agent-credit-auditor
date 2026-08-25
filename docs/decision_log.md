@@ -214,6 +214,80 @@
   Linux checkout or fails the strict provenance validation, the release gate
   is broken and the pack is INVALID.
 
+## D11 — Stage 1 trajectory bridge: the Auditor's own record format (2026-08-23)
+
+- **Decision**: The trajectory-level audit consumes `aca-trajectory-record-1.0`
+  records — the Auditor's OWN frozen fixture spec (`audit/trajectory_audit.py`,
+  `adapters/trajectory_bundle.py`, CLI `audit-trajectories`). Real
+  GRPO-Guard trajectories keep flowing through the envelope adapter
+  (`guard_integration.py`, schema pinned to the Guard repo, §25); the record
+  format is NOT claimed to be Guard's schema.
+- **Evidence**: External review direction "audit the data the optimizer
+  consumes, not just manifests" (docs/gpt_review_round1.md); the six
+  trajectory faults (mask_shift/misbound_logprob/retokenization/stale/mixed
+  policy/silent mask drift) all map to existing reason codes (T005/S002/T004).
+- **Alternative**: Wait for Guard's trajectory schema package before building
+  the offline audit.
+- **Why rejected**: The offline audit must exist independently of Guard's
+  release schedule; the adapter layer keeps the two decoupled (§20.2 gate
+  intact for real Guard records).
+- **Falsification**: If a real Guard record cannot be expressed in the
+  record format via the adapter without semantic loss, the bridge claim is
+  void.
+
+## D12 — Stage 2 evidence bridge: controllable tool-agent worlds (2026-08-24)
+
+- **Decision**: The exact-to-real bridge uses a NEW controllable tool-agent
+  world family (`worlds/tool_agent.py`: observation-dependent tool-use MDP,
+  two H=4 exact tasks + two H=12 sampling twins). The exact-layer predictor
+  `var_cycle * cost / B + bias^2` is the pre-registered quantitative claim;
+  the estimators are the SAME definitions as the M0 exact worlds.
+- **Evidence**: Prediction ratios 0.87-1.07 across all estimator-task pairs;
+  the transfer finding (paired-replay unbiasedness does NOT hold in
+  observation-dependent worlds — the coupled contrast misses the indirect
+  effect of the decision through future observations/actions) is a REAL
+  exact-layer discovery, verified by cycle-MC agreement (6-sigma) for every
+  estimator.
+- **Alternative**: Extend the existing Bernoulli/shared-logit worlds with
+  observation dependence.
+- **Why rejected**: The tool-agent structure (call/observe/decide) is the
+  minimal structure that exhibits the indirect-effect phenomenon; reusing
+  the old families would not have surfaced it.
+- **Falsification**: If the exact predictor fails (ratio outside [0.5, 2.0])
+  on any estimator-task pair at fixed budget, the bridge claim is void.
+
+## D13 — Stage 3 real closed loop: execution deviations (2026-08-24/25)
+
+- **Decision**:
+  1. All rollouts use the TRAINER'S OWN sampler with Guard
+     `behavior_logprob_source="exact_behavior_scorer"` (schema §7.5) — vLLM
+     0.26 cannot initialize on either server (autodl2's Blackwell SM 12.x;
+     jindun's env mismatch). Recorded in every run's metrics as a documented
+     limitation; the generation-service mode is NOT exercised.
+  2. The 18-run matrix was executed on jindun (js3.blockelite.cn, 8x A800),
+     one GPU at a time, free-card-only, yielding to concurrent user jobs —
+     autodl2's partial 3/18 dense runs (artifacts/stage3/) were superseded.
+  3. Paired-branch credit uses a (decision slots x 2 branches) utility
+     matrix with the reliability gate — CRN coupling is NOT reproduced from
+     the exact world (real rollouts are independent draws); documented in
+     stage3/credit.py.
+  4. Malformed tool calls raise in the CTS reward path on jindun's
+     agent_ttrl copy; the trainer now catches reward exceptions (reward 0 +
+     recorded error) instead of crashing.
+- **Evidence**: 18/18 runs with Guard-validated updates where applicable
+  (dense/local every epoch; paired gate abstained 9/9 — zero credit, zero
+  updates); pre-registered predictions (stage3/PREDICTIONS.md) compared in
+  stage3/REPORT.md (P1 VOID, P2 CONFIRMED, P3 INCONCLUSIVE, P4 partial);
+  trajectory records audited offline (18 x 768 records, zero per-record
+  findings).
+- **Alternative**: Fix vLLM on the servers; run on autodl2 as planned.
+- **Why rejected**: vLLM 0.26's SM 12.x incompatibility is a binary/runtime
+  issue outside the project's control; jindun had free A800 cards and a
+  shared-host discipline that matches the "yield to others" compute policy.
+- **Falsification**: If any of the 18 runs fails the offline trajectory
+  audit or its Guard events are inconsistent, the closed-loop claim is
+  INVALID.
+
 ---
 
 *Log opened 2026-08-22 before the first formal run. Append-only; new entries

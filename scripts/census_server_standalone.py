@@ -10,6 +10,7 @@ output exactly, then the large N run tightens the rate estimates.
 Usage:
     python census_server_standalone.py [N] [WORKERS] [OUTPUT.json]
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -59,7 +60,9 @@ def action_value(reward, transitions, policy, s: int, a: int, horizon: int) -> F
         if p_tr == 0:
             continue
         p_a1 = policy["p1"] if sp == 1 else policy["p0"]
-        sub = p_a1 * action_value(reward, transitions, policy, sp, 1, horizon - 1) + (1 - p_a1) * action_value(reward, transitions, policy, sp, 0, horizon - 1)
+        sub = p_a1 * action_value(reward, transitions, policy, sp, 1, horizon - 1) + (1 - p_a1) * action_value(
+            reward, transitions, policy, sp, 0, horizon - 1
+        )
         v += p_tr * (reward[(s, a, sp)] + sub)
     return v
 
@@ -110,7 +113,16 @@ def main() -> int:
     }
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
-    print(json.dumps({"families": n, "rates": {k: round(v, 7) for k, v in out["rates"].items()}, "elapsed_s": round(elapsed, 1), "workers": workers}))
+    print(
+        json.dumps(
+            {
+                "families": n,
+                "rates": {k: round(v, 7) for k, v in out["rates"].items()},
+                "elapsed_s": round(elapsed, 1),
+                "workers": workers,
+            }
+        )
+    )
     return 0
 
 

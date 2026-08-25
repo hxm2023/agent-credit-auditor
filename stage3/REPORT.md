@@ -38,9 +38,12 @@
 
 | Prediction | Verdict | Evidence |
 |---|---|---|
-| P1 ordering of final success | VOID | cts_order: all equal (0.000) -> ordering VOID; tau2_retail: all equal (0.000) -> ordering VOID |
-| P2 gradient variance ordering | CONFIRMED | dense > local > paired ({'dense': '2.4444', 'local': '2.4284', 'paired': '0.0000'}) (dense ~= local; paired abstains) |
-| P3 KL drift ordering | INCONCLUSIVE | paired < local < dense ({'dense': '0.0007', 'local': '0.0005', 'paired': '0.0000'}) (paired's 0.0 = zero updates/gate abstention, not mechanism KL) |
+| P1 ordering of final success (cts_order) | VOID | cts_order: all equal (0.000) -> ordering VOID |
+| P2 gradient variance ordering (cts_order) | CONFIRMED | dense > local > paired ({'dense': '4.8887', 'local': '4.8569', 'paired': '0.0000'}) (dense ~= local; paired abstains) |
+| P3 KL drift ordering (cts_order) | INCONCLUSIVE | paired < local < dense ({'dense': '0.0013', 'local': '0.0011', 'paired': '0.0000'}) (paired's 0.0 = zero updates/gate abstention, not mechanism KL) |
+| P1 ordering of final success (tau2_retail) | VOID | tau2_retail: all equal (0.000) -> ordering VOID |
+| P2 gradient variance ordering (tau2_retail) | VOID | all estimators equal (0.0000) — no signal to rank |
+| P3 KL drift ordering (tau2_retail) | INCONCLUSIVE | dense < local < paired ({'dense': '0.0000', 'local': '0.0000', 'paired': '0.0000'}) (paired's 0.0 = zero updates/gate abstention, not mechanism KL) |
 
 ## Stage-1 trajectory audit on the exported records
 
