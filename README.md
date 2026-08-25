@@ -1,19 +1,27 @@
 # Agent-RL Credit Auditor
 
+[![CI](https://img.shields.io/github/actions/workflow/status/hxm2023/agent-credit-auditor/ci.yml?branch=main&label=CI)](https://github.com/hxm2023/agent-credit-auditor/actions)
+[![Release](https://img.shields.io/github/v/release/hxm2023/agent-credit-auditor?label=release)](https://github.com/hxm2023/agent-credit-auditor/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12-blue)](.python-version)
+
 CPU-first audit and exact-benchmark tool for credit estimators in agent RL.
 
 **Not** a new credit-assignment algorithm. It forces every candidate method to
-answer four questions (§0 of the design handbook):
+answer four questions (§0 of the design handbook) — and refuses to let a
+pretty learning curve answer them:
 
-1. **Estimand** — what exactly is being estimated (full policy gradient, a local
-   decision gradient, root-marginal, a continuation-specific effect)?
-2. **Bias** — against an independent oracle in finite, exactly-enumerable worlds,
-   is the estimator unbiased or is the bias explainable?
-3. **Cost** — under a matched transition/token/intervention budget, does
-   fixed-budget MSE beat strong baselines?
-4. **Mechanism** — is a positive result really produced by the claimed
-   adaptive/local/causal mechanism, or did it degenerate into fixed
-   hyperparameters?
+| # | Question | What it kills | Gate |
+|---|---|---|---|
+| 1 | **Estimand** — what exactly are you estimating (full policy gradient, a local decision gradient, root-marginal, a continuation-specific effect)? | local-contrast methods that update shared prefixes without proving they still estimate the full gradient | T001-T005 |
+| 2 | **Bias** — against an independent oracle in finite, exactly-enumerable worlds, is the estimator unbiased or is the bias explainable? | any estimator whose "old logprobs" were never produced by the behavior policy | S001-S004 |
+| 3 | **Cost** — under a matched transition/token/intervention budget, does fixed-budget MSE beat strong baselines? | methods that buy their wins with extra oracle calls or branch rollouts | C001-C003 |
+| 4 | **Mechanism** — is a positive result really produced by the claimed adaptive/local/causal mechanism, or did it degenerate into fixed hyperparameters? | "adaptive" methods whose calibrated widths collapse to the global control | MECH001-MECH002 |
+
+Real cases it caught (legacy incident background, `docs/caught_fakes.md`):
+CPC's fake adaptivity (widths collapsed to [2,2,2,2]), the ρ=0.735 fake
+variance (computed on no-op alternatives with undefined variance), and the
+86% no-op fake success curve (static rollout policy).
 
 ## Design authority
 
@@ -92,6 +100,47 @@ scripts/         run_m0.sh / run_v001.sh / run_d002.sh / reproduce_all.sh
 tests/           math units, oracle independence, protocol/evidence, fault injection
 artifacts/       canonical run outputs (result/manifest/report, no-overwrite)
 ```
+
+## The two-project trust chain (GRPO-Guard ↔ Credit Auditor)
+
+These two repos are one story: **GRPO-Guard validates the online trajectory
+chain** (policy/token/mask identity, canonical hashing, envelope lifecycle),
+**Credit Auditor validates the offline estimator claims** (estimand, target,
+cost, mechanism) — and they consume each other:
+
+- **This repo audits trajectories from GRPO-Guard**: real Guard-issued
+  trajectory envelopes flow through the Auditor's `CreditAuditBundle`
+  validation (hash-only references, fail-closed on the pinned
+  `grpo-guard-envelope-1.0` schema, §25), and the trajectory-level audit
+  (`audit-trajectories`, v0.2-prep) checks the optimizer-consumed records
+  for the Guard online faults that are offline-detectable (mask shift →
+  T005, misbound logprob → S002, stale policy → T004).
+- **The other direction**: GRPO-Guard's envelope contract is the online half
+  of the same failure taxonomy — the `static_rollout`/`mask_shift` incidents
+  that the Auditor catches offline are the ones Guard catches online
+  (`docs/online_offline_fault_map.md`).
+- **Cross-project demo**: `scripts/run_guard_demo.sh` (envelope → bundle) +
+  `scripts/run_real_scenario_demo.sh` (Guard fault patterns injected into
+  Auditor artifacts) + the Stage-3 real loop (18 Guard-supervised runs whose
+  trajectories the Auditor then audits).
+
+The online/offline split is the point: a trajectory can be perfectly
+Guard-validated and still be audited for what its estimator claims.
+
+## CTRI census at scale — N = 10⁷
+
+The sign/rank stability census scales across three frozen sizes with the
+same convergence behavior:
+
+| N (families) | 5,000 | 100,000 | **10,000,000** |
+|---|---:|---:|---:|
+| sign-reversal rate | ≈ 3.2% | ≈ 3.2% | **3.2744% ± 0.006 pp** |
+| hardware | laptop CPU | laptop CPU | autodl2, 48 CPU workers, 88 s, 0 GPU |
+| evidence | `artifacts/v0.1.6/CSCALE` | `artifacts/v0.1.6/CSCALE_LARGE` | `artifacts/v0.1.2/scale_supplement/` |
+
+The 10⁷ run (Fraction-exact) was executed on the shared autodl2 server's CPU
+cores with zero GPU use, in parallel with the GPU projects — the Auditor is
+CPU-first by design. `scripts/run_on_autodl2.sh` reproduces it.
 
 ## v0.2-prep additions — Stage 3: matched-budget real closed loop (jindun)
 
