@@ -107,6 +107,26 @@ metric PASS 和 mechanism FAIL，而不是把失败藏起来。
 
 ---
 
+## Act 7 — 从 exact 到真实训练：证据桥与闭环（2 min，新）
+
+> exact 世界再漂亮，面试官会问"这能预测真实训练吗"。我把这条路打通了：
+> - **证据桥（Stage 2）**：在可控 tool-agent 世界（观察依赖的工具调用 MDP）上，
+>   exact 层的预测公式 var·cost/B + bias² 定量复现了采样预算下的固定预算 MSE
+>   （全部估计器-任务对比率 0.87-1.07）——exact 结论不是孤立的玩具。同时发现
+>   一个 transfer finding：paired-replay 在独立坐标设计世界里的无偏性，在观察
+>   依赖世界里不成立（配对对比漏掉了决策通过未来观察/动作的间接效应）——exact
+>   层当场抓到，这正是"审计判断能预测失败"的证据。
+> - **真实闭环（Stage 3）**：在共享 8×A800 服务器上跑了 18 次 Guard 监督的真实
+>   GRPO（2 个 tool-use 任务 × 3 个 credit estimator × 3 seeds，Qwen3-4B LoRA，
+>   一次一张卡、让位他人）。结果：dense/local 每 epoch 都有真实 Guard 验证的
+>   更新；**paired-branch 的可靠性门在全部 9 次里选择弃权**（零 credit → 零更新）
+>   ——我把这个保守门行为如实写进报告，而不是包装成成功。tau2 任务则是一个
+>   诚实的负结果：base 模型产生不了有效工具调用，奖励全零，所有估计器零信号。
+
+**面试要点**：这一段回答"exact 数学审计和真实训练有什么关系"——桥接的不是
+玩具迁移论，而是同一套判断（target/cost/mechanism）在真实数据上仍然工作，
+而且敢于报告门弃权与零信号这样的负结果。
+
 ## 高频追问速答（对应设计 §24.4）
 
 1. **local vs full gradient**：local sibling 估计单步局部效应

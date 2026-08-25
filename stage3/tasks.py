@@ -18,10 +18,8 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 
 import numpy as np
-
 
 # ---------------------------------------------------------------- CTS order
 
@@ -80,7 +78,6 @@ class CtsTask:
     task_id = "cts_order"
 
     def prompts(self, n: int, seed: int) -> list[dict]:
-        rng = np.random.default_rng(seed)
         out = []
         for i in range(n):
             out.append({"text": CTS_TASK_PROMPT, "prompt_id": f"cts-order-{i:04d}"})
@@ -102,6 +99,7 @@ class CtsTask:
 
 
 # ---------------------------------------------------------------- TAU2 retail
+
 
 class Tau2Task:
     """TAU2 retail subset via the tau2 server (POST /init /exec /eval).

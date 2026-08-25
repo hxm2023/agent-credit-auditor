@@ -1,4 +1,7 @@
-import typing, typing_extensions
+import typing
+
+import typing_extensions
+
 if not hasattr(typing, "NotRequired"):
     typing.NotRequired = typing_extensions.NotRequired
 
@@ -9,17 +12,12 @@ POST /exec  {"code": "..."} -> parse func(args) calls, use_tool, return observat
 POST /eval  {}               -> match call history against evaluation_criteria.actions
 POST /reset {}               -> reset history
 """
-import ast
-import json
-import os
-import sys
-from pathlib import Path
+import os  # noqa: E402
+import sys  # noqa: E402
 
 sys.path.insert(0, "/data_3/repo/agood/tau2-bench-src")
 
 from flask import Flask, request  # noqa: E402
-
-from tau2.data_model.tasks import Task  # noqa: E402
 from tau2.domains.retail.environment import get_environment, get_tasks  # noqa: E402
 
 app = Flask(__name__)
@@ -43,13 +41,13 @@ def init_world():
         return {"ok": False, "error": f"task {task_id} not found"}, 404
     env = get_environment()
     call_history = []
-    return {"ok": True, "task_id": task_id,
-            "instruction": task.user_scenario.instructions.task_instructions[:300]}
+    return {"ok": True, "task_id": task_id, "instruction": task.user_scenario.instructions.task_instructions[:300]}
 
 
 def _parse_calls(code: str) -> list[dict]:
     """Parse func(k=v, ...) lines into {name, arguments}; tolerant of prose."""
     import re
+
     calls = []
     for m in re.finditer(r"([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^\n]{0,200})\)", code):
         name, argstr = m.group(1), m.group(2)
@@ -96,8 +94,14 @@ def eval_task():
                 break
     total = len(actions)
     pass_pct = 100.0 * matched / total if total else 100.0
-    return {"ok": True, "success": matched == total, "pass_pct": pass_pct,
-            "matched": matched, "total": total, "calls": len(call_history)}
+    return {
+        "ok": True,
+        "success": matched == total,
+        "pass_pct": pass_pct,
+        "matched": matched,
+        "total": total,
+        "calls": len(call_history),
+    }
 
 
 @app.post("/reset")

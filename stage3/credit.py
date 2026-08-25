@@ -50,7 +50,9 @@ def decision_positions(text: str, tokenizer, completion_ids) -> list[int]:
     markers = []
     for m in re.finditer(r'"(?:tool|name)"\s*:\s*"', decoded):
         markers.append(m.end())
-    for m in re.finditer(r"\b(reserve_item|create_order|charge|ship|complete_task|use_tool|lookup|refund|notify)\b", decoded):
+    for m in re.finditer(
+        r"\b(reserve_item|create_order|charge|ship|complete_task|use_tool|lookup|refund|notify)\b", decoded
+    ):
         markers.append(m.start())
     # map each marker char offset to the token that contains it
     out = []

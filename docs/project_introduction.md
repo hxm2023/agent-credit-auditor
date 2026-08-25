@@ -110,6 +110,14 @@ artifacts/         规范运行输出（result/manifest/report，no-overwrite + 
 | **CTRI 大规模普查** | Fraction 精确 sign/rank 稳定性：N=5k → 100k → **10M（autodl2 服务器，48 CPU worker，88s）**，reversal 率收敛于 **3.2744% ± 0.006pp** | 三档规模速率稳定，服务器算力利用 |
 | **collapse 统计检验** | D002 [2,2,2,2] 落在候选宽度零分布的 0 分位（p ≤ 0.05） | MECH001 从硬编码谓词升级为假设检验 |
 
+### 4.2.5 v0.2-prep：exact-to-real 证据桥 + 真实闭环（2026-08）
+
+| 项目 | 数字 | 意义 |
+|---|---|---|
+| **证据桥（Stage 2）** | exact 预测公式 var·cost/B + bias² 复现采样预算下的固定预算 MSE，**全部估计器-任务对比率 0.87-1.07**（可控 tool-agent 世界，双层验证 + 独立 MC 门） | exact 判断是预测器不是玩具；transfer finding：paired-replay 无偏性在观察依赖世界不成立（间接效应漏检），exact 层当场抓出 |
+| **真实闭环（Stage 3）** | **18/18** Guard 监督真实 GRPO 训练（jindun 8×A800 共享服务器：2 任务 × 3 估计器 × 3 seeds，Qwen3-4B LoRA，一次一张卡、让位他人并发作业） | dense/local 每 epoch 真实 Guard 验证更新（grad_l2 ~4.9）；**paired-branch 可靠性门 9/9 弃权**（零 credit→零更新，保守门行为如实报告）；tau2 任务全零奖励（base 模型零有效调用）为诚实负结果 |
+| **跨项目信任链** | 本仓库审计来自 GRPO-Guard 的轨迹 envelope（hash-only、fail-closed 钉 `grpo-guard-envelope-1.0`）；Guard README 已反向引用 | 在线（Guard）+ 离线（Auditor）双项目叙事；Stage 3 的 18 次训练轨迹全部过 Auditor 的离线审计 |
+
 ### 4.3 真实场景使用（"这个项目真的用起来过吗"——是）
 
 - **Qwen3-4B GRPO manifest-level 集成检查**（autodl2，GRPO-Guard 监督的
@@ -129,16 +137,15 @@ artifacts/         规范运行输出（result/manifest/report，no-overwrite + 
 
 ## 5. 工程实践与交付状态
 
-- **190 个 CPU 测试**（smoke ~85s 快速层；完整套件为发布门禁），覆盖率 94.5%
+- **190+ 个 CPU 测试**（smoke ~85s 快速层；完整套件为发布门禁），覆盖率 94.5%
 - **GitHub CI 双 job 全绿**：quality（ruff/format/pyright/依赖审计）+
   test（协议校验 → smoke → fresh-clone M0 复现 → 完整套件 + 覆盖率门禁）
-- **GitHub Release v0.1.6 + tag**（v0.1.6 为外部评审 P0 修复版：LF SHA256SUMS
-  证据链、严格 provenance、CI release gate、干净树重新生成全部九包）；`uv build`
-  sdist/wheel 已验证
+- **GitHub Release v0.1.6 + tag**（P0 修复版）+ **v0.1.7 里程碑**（Stage 1-3：
+  轨迹审计 + 证据桥 + 18 次真实闭环）；`uv build` sdist/wheel 已验证
 - **Dockerfile**（CPU-only 发布镜像）、`.python-version`、`SECURITY.md`
 - **一键复现**：`bash scripts/reproduce_all.sh artifacts/v0.1.x` 从干净克隆
   重建全部实验包与发布报告（fresh-clone 验证通过）
-- **版本历史**：v0.1.0-v0.1.6，每版干净工作树发布，manifest dirty=false
+- **版本历史**：v0.1.0-v0.1.7（v0.1.7 = Stage 1-3 里程碑），每版干净工作树发布，manifest dirty=false
 
 ---
 
@@ -155,9 +162,10 @@ artifacts/         规范运行输出（result/manifest/report，no-overwrite + 
 - **Claims 政策**（§23）：允许——finite-MDP 无偏性、matched-budget 比较、
   dual verdict 演示、窄域 synthetic 效率 claim；禁止——"提出新算法"、
   "真实 LLM 收益"、"K=8 证明 adaptive 有效"、任何旧数字。
-- **已知非目标**：不证明真实 LLM 下游收益；不外推 prevalence；v0.1 不连
-  接 GPU trainer。v0.2 的真实轨迹 estimator 级审计受 GRPO-Guard schema
-  发布进度约束（§20.2 门）。
+- **已知非目标**：不证明真实 LLM 下游收益（Stage 3 的 final eval 未变——
+  机制级比较）；不外推 prevalence。v0.2 的真实轨迹 estimator 级审计已通过
+  Stage 1-3 落地（轨迹审计 + 证据桥 + 18 次真实闭环），但正式 schema 包仍
+  受 GRPO-Guard 发布进度约束（§20.2 门）。
 
 ---
 
