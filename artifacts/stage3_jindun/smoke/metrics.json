@@ -1,0 +1,35 @@
+{
+  "run_id": "cts_order_dense_s1-1787574341",
+  "task": "cts_order",
+  "estimator": "dense",
+  "seed": 1,
+  "epochs": 1,
+  "epoch_metrics": [
+    {
+      "epoch": 0,
+      "policy_version": 1,
+      "mean_u": 0.35546875,
+      "success_rate": 0.0,
+      "mean_calls": 1.9375,
+      "invalid_rate": 0.5,
+      "grad_l2": 0.9867595096413199,
+      "loss": -1.0855728760361671e-08,
+      "n_sequences": 32,
+      "adapter_sha256": "4a93837adb0bb39801cbdb79372287f9b5bdb2e590974dcd64cecb6033b58490"
+    }
+  ],
+  "rollout_backend": "trainer_sampler_exact_behavior_scorer",
+  "vllm_unavailable": "vLLM 0.26 cannot initialize on SM 12.x (Blackwell); all epochs use the trainer's own sampler with Guard exact_behavior_scorer mode",
+  "gpu_seconds": 93.28799884021282,
+  "final_eval": {
+    "n": 16,
+    "success_rate": 0.0,
+    "mean_u": 0.875,
+    "mean_len": 4.0,
+    "invalid_rate": 0.0
+  },
+  "final_adapter_sha256": "4a93837adb0bb39801cbdb79372287f9b5bdb2e590974dcd64cecb6033b58490",
+  "kl_drift_vs_base": -0.00048766008694656193,
+  "identity_allowed": 32,
+  "trajectory_records": "stage3/out_jindun/smoke/trajectory_records.jsonl"
+}

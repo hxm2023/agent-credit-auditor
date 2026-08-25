@@ -1,0 +1,59 @@
+{
+  "run_id": "tau2_retail_paired_s2-1787623937",
+  "task": "tau2_retail",
+  "estimator": "paired",
+  "seed": 2,
+  "epochs": 3,
+  "epoch_metrics": [
+    {
+      "epoch": 0,
+      "policy_version": 1,
+      "mean_u": 0.0,
+      "success_rate": 0.0,
+      "mean_calls": 0.0,
+      "invalid_rate": 1.0,
+      "grad_l2": 0.0,
+      "loss": 0.0,
+      "n_sequences": 256,
+      "adapter_sha256": "6a7d33a8bca8749a70f71f8e23415851d2aedb77508471bcf2d5e164f4e55f34"
+    },
+    {
+      "epoch": 1,
+      "policy_version": 2,
+      "mean_u": 0.0,
+      "success_rate": 0.0,
+      "mean_calls": 0.0,
+      "invalid_rate": 1.0,
+      "grad_l2": 0.0,
+      "loss": 0.0,
+      "n_sequences": 256,
+      "adapter_sha256": "b43bbb3da1e9a8dc823e69a0ec8de6094202075c25f7a2d41f0744a2fb966da9"
+    },
+    {
+      "epoch": 2,
+      "policy_version": 3,
+      "mean_u": 0.0,
+      "success_rate": 0.0,
+      "mean_calls": 0.0,
+      "invalid_rate": 1.0,
+      "grad_l2": 0.0,
+      "loss": 0.0,
+      "n_sequences": 256,
+      "adapter_sha256": "bad63f1c84d46faf2458c49e99a2738fd211de6df17a0ac316042dd0dc033427"
+    }
+  ],
+  "rollout_backend": "trainer_sampler_exact_behavior_scorer",
+  "vllm_unavailable": "vLLM 0.26 cannot initialize on SM 12.x (Blackwell); all epochs use the trainer's own sampler with Guard exact_behavior_scorer mode",
+  "gpu_seconds": 2621.9174572955817,
+  "final_eval": {
+    "n": 16,
+    "success_rate": 0.0,
+    "mean_u": 0.0,
+    "mean_len": 0.0,
+    "invalid_rate": 1.0
+  },
+  "final_adapter_sha256": "bad63f1c84d46faf2458c49e99a2738fd211de6df17a0ac316042dd0dc033427",
+  "kl_drift_vs_base": 0.0,
+  "identity_allowed": 768,
+  "trajectory_records": "/data_3/repo/agood/Agent-RL-Credit-Auditor/stage3/out_jindun/tau2_retail_paired_s2/trajectory_records.jsonl"
+}

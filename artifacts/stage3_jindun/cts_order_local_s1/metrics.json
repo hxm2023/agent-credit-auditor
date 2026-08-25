@@ -1,0 +1,59 @@
+{
+  "run_id": "cts_order_local_s1-1787633988",
+  "task": "cts_order",
+  "estimator": "local",
+  "seed": 1,
+  "epochs": 3,
+  "epoch_metrics": [
+    {
+      "epoch": 0,
+      "policy_version": 1,
+      "mean_u": 0.232421875,
+      "success_rate": 0.0,
+      "mean_calls": 1.51171875,
+      "invalid_rate": 0.58984375,
+      "grad_l2": 4.651627503261114,
+      "loss": 0.06746638522599824,
+      "n_sequences": 256,
+      "adapter_sha256": "8ff8dae3d2243e8496f9093978641e0a2a81bd3338f2ff76c2d53a18a3186ec7"
+    },
+    {
+      "epoch": 1,
+      "policy_version": 2,
+      "mean_u": 0.18115234375,
+      "success_rate": 0.0,
+      "mean_calls": 1.5234375,
+      "invalid_rate": 0.5546875,
+      "grad_l2": 3.4486692090723974,
+      "loss": 0.07883465111327864,
+      "n_sequences": 256,
+      "adapter_sha256": "7ededfdf55f3c30303b9eabe64a19177738f5edee68b69832ebcf371839d825a"
+    },
+    {
+      "epoch": 2,
+      "policy_version": 3,
+      "mean_u": 0.1708984375,
+      "success_rate": 0.0,
+      "mean_calls": 1.44921875,
+      "invalid_rate": 0.57421875,
+      "grad_l2": 5.186436047543507,
+      "loss": 0.08017054200027358,
+      "n_sequences": 256,
+      "adapter_sha256": "36cbd680660b69279cd0d699c7866388516811c2594a38dd78996c2745e7336c"
+    }
+  ],
+  "rollout_backend": "trainer_sampler_exact_behavior_scorer",
+  "vllm_unavailable": "vLLM 0.26 cannot initialize on SM 12.x (Blackwell); all epochs use the trainer's own sampler with Guard exact_behavior_scorer mode",
+  "gpu_seconds": 2541.6738668400794,
+  "final_eval": {
+    "n": 16,
+    "success_rate": 0.0,
+    "mean_u": 0.875,
+    "mean_len": 4.0,
+    "invalid_rate": 0.0
+  },
+  "final_adapter_sha256": "36cbd680660b69279cd0d699c7866388516811c2594a38dd78996c2745e7336c",
+  "kl_drift_vs_base": -0.0012004354503005743,
+  "identity_allowed": 768,
+  "trajectory_records": "/data_3/repo/agood/Agent-RL-Credit-Auditor/stage3/out_jindun/cts_order_local_s1/trajectory_records.jsonl"
+}
