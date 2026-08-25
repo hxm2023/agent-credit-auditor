@@ -62,6 +62,23 @@ jobs:
       - name: Full test suite + coverage (release gate, >= 85%)
         run: uv run pytest --cov=credit_auditor --cov-fail-under=85 -q
 
+      - name: Evidence integrity — stage3 results parse and pass the offline audit
+        run: |
+          uv run python scripts/stage3_report.py artifacts/stage3_jindun --out /tmp/stage3_report.md
+          uv run python -c "
+import glob
+from credit_auditor.audit.trajectory_audit import audit_trajectory_dir
+runs = [f'{t}_{e}_s{s}' for t in ('cts_order','tau2_retail')
+        for e in ('dense','local','paired') for s in (1,2,3)]
+for run in runs:
+    m = f'artifacts/stage3_jindun/{run}/metrics.json'
+    a = audit_trajectory_dir(f'artifacts/stage3_jindun/{run}/trajectory_records.jsonl')
+    assert a['records'] == 768, (run, a['records'])
+    assert len(a['findings']) == 0, (run, a['findings'][:2])
+    assert __import__('os').path.isfile(m), run
+print(f'OK: {len(runs)}/18 runs, 768 records each, zero per-record findings')
+"
+
       - name: Guard + legacy bundle CLI smoke
         run: |
           echo '{"schema_version": "grpo-guard-envelope-1.0", "required_extensions": [], "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' > /tmp/env.json

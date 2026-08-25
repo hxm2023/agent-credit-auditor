@@ -47,8 +47,6 @@ from tasks import TASKS, parse_tool_calls  # noqa: E402
 MODEL_PATH = os.environ.get(
     "GRPO_GUARD_MODEL_PATH", "/data_3/repo/agood/models_cache/models--Qwen--Qwen3-4B/snapshots/"
 )
-VLLM_PORT = int(os.environ.get("STAGE3_VLLM_PORT", "8007"))
-GROUP_PORT = int(os.environ.get("STAGE3_GROUP_PORT", "51227"))
 REPO_DIR = Path(os.environ.get("GRPO_GUARD_REPO", "/root/autodl-tmp/grpo-guard-src"))
 ATTRL_DIR = Path(os.environ.get("ATTRL_DIR", "/root/autodl-tmp/agent-ttrl"))
 sys.path.insert(0, str(REPO_DIR / "src"))
@@ -70,47 +68,6 @@ def now_utc() -> str:
     import datetime
 
     return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-
-
-# ---------------------------------------------------------------- server
-
-
-def start_server(server_log: Path) -> subprocess.Popen:
-    log(f"starting vLLM server (GPU1) at :{VLLM_PORT}")
-    trl_bin = os.path.join(os.path.dirname(sys.executable), "trl")
-    proc = subprocess.Popen(
-        [
-            trl_bin,
-            "vllm-serve",
-            "--model",
-            MODEL_PATH,
-            "--port",
-            str(VLLM_PORT),
-            "--gpu-memory-utilization",
-            "0.3",
-            "--max-model-len",
-            "1024",
-            "--enforce-eager",
-        ],
-        env={**os.environ, "CUDA_VISIBLE_DEVICES": "1"},
-        stdout=open(server_log, "w"),
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-    )
-    for _ in range(180):
-        time.sleep(2)
-        try:
-            import urllib.request
-
-            with urllib.request.urlopen(f"http://127.0.0.1:{VLLM_PORT}/health", timeout=5) as r:
-                if r.status == 200:
-                    log("server healthy")
-                    return proc
-        except Exception:
-            pass
-        if proc.poll() is not None:
-            raise RuntimeError(f"server died: {Path(server_log).read_text()[-2000:]}")
-    raise RuntimeError("server not healthy in 360s")
 
 
 def stop_server(proc: subprocess.Popen | None) -> None:
