@@ -523,9 +523,13 @@ def main() -> int:
             # "exact_behavior_scorer", schema 7.5): on-policy and closed.
             rows = emit_and_validate(train_sampler_rollout(policy_version), policy_version, "exact_behavior_scorer", epoch)
 
-            # reward + export records
+            # reward + export records (malformed tool calls must not
+            # crash the run: reward 0 + recorded error)
             for row in rows:
-                u, info = task.reward(row["text"])
+                try:
+                    u, info = task.reward(row["text"])
+                except Exception as exc:  # noqa: BLE001
+                    u, info = 0.0, {"errors": [f"reward_exception: {type(exc).__name__}"]}
                 row["u"] = u
                 row["info"] = info
             all_records.extend(
@@ -633,9 +637,10 @@ def main() -> int:
                     tot_w += w
                 loss_res = SimpleNamespace(loss=None, metrics={"loss": loss_sum / tot_w, "chunks": True})
             else:
+                # stage3_loss backpropagates per chunk internally; the
+                # returned loss is detached (no second backward)
                 loss, lmetrics = stage3_loss(model, h_list, pos_weights, group_size=args.gens)
                 loss_res = SimpleNamespace(loss=loss, metrics=lmetrics)
-                loss_res.loss.backward()
             grad_l2 = float(sum(p.grad.norm().item() ** 2 for p in model.parameters() if p.grad is not None) ** 0.5)
             optimizer.step()
             log(f"epoch {e}: loss={loss_res.metrics['loss']:.4f} grad_l2={grad_l2:.4f}")
