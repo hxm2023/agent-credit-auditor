@@ -56,6 +56,11 @@ bash stage3/run_jindun_sweep.sh   # fills any gaps -> 18/18
 Result collection: `uv run python scripts/stage3_report.py <results_dir>` in
 this repo writes the comparison against the pre-registered predictions.
 
+## Evidence locations
+
+Full Guard-supervised evidence-chain stores live outside the repo (size);
+see `artifacts/stage3_evidence_manifest.md` for where.
+
 ## Honest boundaries
 
 - The estimators are the real-rollout mapping of the Stage-2 definitions
