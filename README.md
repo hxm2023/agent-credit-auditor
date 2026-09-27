@@ -234,6 +234,11 @@ actually consumes, not just manifests.
 - **Interview narrative**: [`docs/tech_narrative.md`](docs/tech_narrative.md)
   — the 10-minute technical story with the honest designed-vs-discovered
   distinction and the §24.4 FAQ answers.
+- **Interview guide (full)**: [`docs/Agent-RL-Credit-Auditor_面试手册.md`](docs/Agent-RL-Credit-Auditor_面试手册.md)
+  — background crash-course, four pitch lengths, the eight-layer technical
+  anatomy with the estimator math, the 23-reason-code gate table, 30
+  interviewer probes with follow-up chains, claims red lines, whiteboard
+  script and a 24-hour checklist.
 
 ## v0.1.2 additions
 
