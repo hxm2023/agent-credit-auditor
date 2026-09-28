@@ -1,0 +1,75 @@
+flowchart TB
+    subgraph INPUT["① 协议输入（跑前冻结 · 内容哈希）"]
+        P["protocol.json<br/>estimand / sampling / cost / gate 定义"]
+        S["seed manifest<br/>冻结问题与随机种子"]
+    end
+
+    subgraph RUN["② 协议优先流水线 runner.py"]
+        R1["14 步固定顺序"]
+        R2["no-overwrite<br/>原子发布"]
+    end
+
+    subgraph WORLDS["③ 精确世界（有限 MDP · fractions.Fraction 精确算术）"]
+        W1["Bernoulli sequence MDP<br/>M0 目标审计"]
+        W2["shared-logit MDP<br/>D002 双裁决"]
+        W3["continuation families<br/>CTRI 普查"]
+        W4["tool-agent 观察依赖<br/>证据桥"]
+        W5["minimal logging 8×3"]
+    end
+
+    subgraph EST["④ 估计器插件（固定 contract）"]
+        E1["dense<br/>无偏 bias ~1e-16"]
+        E2["local sibling<br/>局部效应无偏"]
+        E3["propagated sibling<br/>T003 拒绝（期望=0）"]
+        E4["paired replay<br/>坐标配对 · 后缀耦合"]
+        E5["PC-RSG 类残差校正"]
+    end
+
+    subgraph ORA["⑤ 双独立 oracle（基准真值）"]
+        O1["路径枚举"]
+        O2["Bellman DP"]
+        O3["独立子进程 · stdlib-only<br/>AST import 隔离 · monkeypatch 破坏测试"]
+        O4["两侧不一致 → INVALID（E002）"]
+    end
+
+    subgraph GATES["⑥ 门禁裁决（23 个 reason code）"]
+        G1["T 目标身份"]
+        G2["S 采样支撑"]
+        G3["C 成本匹配"]
+        G4["U 效用 · MECH 机制"]
+        G5["D 流程 · E 退化 · N 数值 · P 证据"]
+    end
+
+    subgraph EV["⑦ 证据包（7 件套 + SHA256SUMS）"]
+        A1["result.json"]
+        A2["gate_decision.json"]
+        A3["oracle_result.json"]
+        A4["run_manifest.json"]
+        A5["raw_rows.jsonl.zst"]
+        A6["REPORT.md"]
+        A7["protocol.json + SHA256SUMS"]
+    end
+
+    INPUT --> RUN
+    RUN --> WORLDS
+    WORLDS --> EST
+    WORLDS --> ORA
+    EST --> GATES
+    ORA --> GATES
+    GATES --> EV
+
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef run fill:#e0e7ff,stroke:#4f46e5,color:#312e81
+    classDef world fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef est fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef ora fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef gate fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    classDef ev fill:#f1f5f9,stroke:#475569,color:#0f172a
+
+    class P,S input
+    class R1,R2 run
+    class W1,W2,W3,W4,W5 world
+    class E1,E2,E3,E4,E5 est
+    class O1,O2,O3,O4 ora
+    class G1,G2,G3,G4,G5 gate
+    class A1,A2,A3,A4,A5,A6,A7 ev

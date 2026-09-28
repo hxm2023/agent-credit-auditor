@@ -1,0 +1,37 @@
+flowchart LR
+    subgraph L1["Exact 层（可精确枚举）"]
+        EX1["枚举每个估计器的 cycle 分布<br/>路径 × sibling 抽取"]
+        EX2["精确 bias / cycle 方差"]
+        EX3["预测公式<br/>MSE ≈ var·cost/B + bias²"]
+    end
+
+    subgraph L2["Sampled 层（匹配 transition 预算）"]
+        SA1["同一批估计器定义<br/>只消费轨迹记录"]
+        SA2["fixed-budget MSE<br/>40 个重复批次"]
+    end
+
+    subgraph L3["Real 层（真实训练闭环）"]
+        RE1["18 次 Guard 监督 GRPO<br/>Qwen3-4B + LoRA<br/>2 任务 × 3 估计器 × 3 种子"]
+    end
+
+    MC["独立 MC 参考<br/>自有随机流与代码路径<br/>不 import 估计器"]
+    TA["离线轨迹审计<br/>aca-trajectory-record-1.0<br/>768 条/run 零违规"]
+
+    EX1 --> EX2
+    EX2 --> EX3
+    EX3 -->|"预注册预测"| SA1
+    SA1 --> SA2
+    SA2 -->|"实测/预测比值 0.87-1.07"| EX3
+    MC -->|"参考值（6σ 一致门）"| SA2
+    SA2 -.->|"同一估计器定义"| RE1
+    RE1 -->|"导出轨迹记录"| TA
+
+    classDef exact fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef sampled fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef real fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef aux fill:#f1f5f9,stroke:#475569,color:#0f172a
+
+    class EX1,EX2,EX3 exact
+    class SA1,SA2 sampled
+    class RE1 real
+    class MC,TA aux
