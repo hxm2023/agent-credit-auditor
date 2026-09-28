@@ -10,7 +10,8 @@
 4. 第 3 节「讲稿四档」——30 秒 / 1 分钟 / 3 分钟 / 10 分钟；
    **3.6 节是「核心工作展开版」（含 30 秒压缩版）**——被问"你具体做了什么"时用它
 5. 第 4 节「技术解剖（十层）」——面试官问到哪层翻哪层
-6. **3.7 节是「十分钟零基础版」**——面试官是外行或想摸底时用它；
+6. **3.7 节是「十分钟零基础版」**（无技术背景的面试官用这个）；
+   **3.8 节是「十分钟技术讲法」**（懂行的面试官用这个）；
    第 7 节「35 个拷问」——重点练 Q11 / Q13 / Q18 / Q31
 7. 第 8 节「术语表」——任何词都能中英对照解释
 8. 第 9 节「红线」——说错就丢分，必须背
@@ -364,6 +365,102 @@ CI 里有一条"发布物必须通过我自己的审计"；给审计器做**故�
   我敢关掉自己方法的一个卖点，比多留一个好看数字更值钱。
 - "为什么值得做？" → 因为我亲自被假曲线骗过；连自己都能被骗，别人一定
   也需要这套检查。
+
+
+### 3.8 十分钟技术讲法（面试官懂行版，无比喻）
+
+**时间分配**：0:00 问题定义 / 1:30 事故 / 2:30 四问 / 4:00 技术装置 /
+6:00 三个主实验 / 7:30 证据桥 / 8:30 真实闭环 / 9:30 边界收尾。
+
+**0:00-1:30 问题定义**
+> 这个项目做 GRPO 里 credit assignment 的审计。GRPO 的训练循环是：对每个
+> prompt 采一组轨迹，用轨迹级回报算组相对 advantage，做带裁剪的策略梯度
+> 更新。结构困难在于 estimand 和信号载体不匹配：优化目标是整条轨迹的策略
+> 梯度 `g* = E[R(τ)·Σ_t s_t]`，`s_t = a_t − π_t` 是每步的中心化动作特征
+> （logit 参数化下等价于 score function）；但监督信号只有末端标量 R(τ)。
+> 把 R 分解到每步决策就是 credit assignment。不同分解给出不同估计量：
+> dense、local sibling、paired-replay、PC-RSG 类残差校正——它们在偏差、
+> 方差、成本上互不相同，而领域长期只用学习曲线判别。
+
+**1:30-2:30 事故**
+> 我拿到过 36.5%→63.5% 的曲线，审计发现三个问题：rollout 侧策略版本没
+> 跟随 trainer（采样用启动时的静态 client，behavior policy 与 trainer
+> policy 版本不一致）；old_logprob 与行为策略不绑定（算 importance ratio
+> 的旧日志概率不是生成轨迹那版策略产生的）；token 序列与 loss mask 身份
+> 不闭合。曲线测的是旧 checkpoint 的行为策略。我没继续调参，把问题拆成
+> 两个工具：GRPO-Guard 管在线身份与链路，Credit Auditor 管离线估计器。
+
+**2:30-4:00 四个审计问题**
+> 一，estimand 是什么（完整梯度/局部效应/root-marginal/continuation
+> effect，需结构化声明后数学核对）；二，bias（相对独立 oracle，无偏还是
+> 偏差可解释）；三，cost（匹配 transition/intervention 预算下的
+> fixed-budget MSE 是否优于强基线）；四，mechanism（正结果是否真来自
+> 声称机制）。四类门禁、具体 reason code、冻结判据、回归测试；策略是
+> fail-closed，判定失败是**正确的审计结果**不是软件错误。
+
+**4:00-6:00 技术装置**
+> 底座是精确可枚举有限 MDP：4-6 步决策、每步二元动作、路径最多 2^6=64
+> 条；所有概率与期望用 `fractions.Fraction` 有理数运算，偏差能算到**精确
+> 的零**（12 个冻结问题 mismatch == 0）。oracle 双份且独立：朴素路径枚举
+> vs Bellman DP，不同算法、独立子进程、stdlib-only；AST 级 import 隔离
+> 检查 + monkeypatch 破坏测试；任一侧不一致实验判 INVALID（E002）。
+> 估计器经固定接口接入：EstimandSpec（目标）/ SamplingSpec（采样与对比）/
+> CostSpec（成本口径含共享成本分摊）/ EstimatorSpec（所需观测与假设），
+> 运行前冻结并内容哈希。运行侧 14 步流水线：解析协议 → 校验 → 哈希源与
+> 种子 → 拒绝已有 canonical 输出 → split 不相交 → 驱动实验 → 临时包 →
+> 原子发布。每个实验目录 7 件套（protocol/result/oracle_result/
+> gate_decision/run_manifest/raw_rows/REPORT）+ SHA256SUMS。23 个 reason
+> code、13 类故障模板（A1-A14 除 A8）。
+
+**6:00-7:30 三个主实验**
+> **M0**：12 个冻结问题，dense 与 uniform-HH 无偏（bias ~1.1e-16）；
+> local sibling 对局部效应无偏、对完整梯度有偏；**propagated sibling 与
+> BPO-like 被拒**——传播项在 t'<t 上条件均值为零、期望恒等于 0（T003）；
+> paired-replay 在预注册 matched-cost 正例上 MSE ratio 0.017 赢 dense，
+> uncoupled 对照组输 7.0 倍（增益来自耦合机制）。
+> **V001**：PC-RSG 式估计器 20 个校准问题期望误差 ≤1.5e-16，但固定预算
+> MSE 中位数 26.53× vs dense（CI [16.78, 42.87]），vs HH 3.06×
+> （CI [2.68, 3.30]）；机制是 1/q 放大 `Var = Var(R·s)/q + g*²(1/q−1)`
+> 加分支 continuation 成本。
+> **D002**：校准集自选 mapping 与 width 并冻结，48 个 held-out 上
+> metric PASS（median ratio 0.2054，CI [0.1766, 0.2289]），但选出的 widths
+> 全是 [2,2,2,2] = global control（MECH001，零分布 0 分位 p≤0.05）——
+> mechanism FAIL，我关闭了该方法的 adaptive claim。
+
+**7:30-8:30 证据桥**
+> 构造观察依赖 tool-agent MDP（工具的观察影响下一步动作概率，
+> prefix-dependent 策略），小到可精确枚举、大到可采样。同批估计器定义在
+> 两层跑：exact 层枚举 cycle 分布（路径 × sibling 抽取，权重精确）；
+> sampled 层只消费轨迹记录，匹配预算下测 fixed-budget MSE，参考值为独立
+> 高预算 MC（自有随机流与代码路径，不 import 估计器）。结果：预测公式
+> `MSE ≈ var_cycle·cost/B + bias²` 复现实测 MSE，比值 **0.87-1.07**。
+> Transfer finding：paired-replay 的无偏性在观察依赖世界不成立——按坐标
+> 对比漏掉 a_t 经未来观察影响未来动作的间接效应，交叉项 E[Q_t·s_t] 不再
+> 为零。
+
+**8:30-9:30 真实闭环**
+> 共享 8×A800 上 18 次 Guard 监督 GRPO：2 任务 × 3 估计器 × 3 种子，
+> Qwen3-4B + LoRA（rank 16 / alpha 32 / lr 5e-6），每次 32 prompts ×
+> 8 generations × 3 epochs。Guard 链路每轮：identity validation → reward
+> event → pre-update ALLOW → materialize → guarded update → commit adapter
+> → canary。因两台服务器 vLLM 不可用，rollout 改为训练器自身采样 +
+> Guard `exact_behavior_scorer` 模式（schema §7.5），限制写进每个 run 的
+> metrics。结果：dense/local 每 epoch 真实更新（梯度 L2 均值 4.89/4.86）；
+> paired 可靠性门 9/9 弃权（零 credit 零更新）；第二任务有效工具调用率 0、
+> 奖励全零、所有估计器零信号；最终评估未变。18 run × 768 条轨迹记录过
+> 离线审计，零违规。
+
+**9:30-10:00 边界与收尾**
+> 边界：不声称真实 LLM 下游收益（最终评估未变）；精确世界不外推真实分布；
+> 历史数字（144/202、24.81x、0.694、rho=0.735）只作事故背景。
+> 收束：**把"估计器好不好"的模糊判断替换成四个可执行、可复现、有 reason
+> code 的审计门，并用 exact→sampled→real 三层验证证明判断能迁移到真实
+> 训练——包括如实报告抓到的失败。**
+
+**讲法提示**：数字后停顿一秒等提问；门禁 code（T003/MECH001/E002）要报；
+主动说实现细节（Fraction、AST 隔离、subprocess、no-overwrite、
+SHA256SUMS）；每段留一个钩子；被问出处直接给路径
+（`artifacts/v0.1.6/M0`、`artifacts/evidence_bridge`、`artifacts/stage3_jindun`）。
 
 
 ---
